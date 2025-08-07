@@ -1,5 +1,5 @@
 /**
- * \file main.c
+ * \file test.c
  * \brief Example test program for OBDD with 10 variables (x0..x9)
  *
  * This file demonstrates how to create more "sophisticated" BDDs for:
