@@ -40,7 +40,7 @@ NVCCFLAGS  := -std=c++17 -O2 -I$(INC_DIR) -I$(SRC_DIR) \
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 LDFLAGS    :=
-LDLIBS     :=
+LDLIBS     := -lgtest -pthread
 
 ifeq ($(DEBUG),1)
   CXXFLAGS  += -g -O0
@@ -125,12 +125,12 @@ $(OBJ_DIR)/%.o: $(TEST_DIR)/%.cpp | dirs
 
 # Sequenziale
 $(SEQ_EXE): $(CPU_OBJS) $(OBJ_DIR)/main_seq.o
-	$(CXX) $(LDFLAGS) $^ -o $@
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 # OpenMP (se abilitato)
 ifeq ($(OMP),1)
 $(OMP_EXE): $(CPU_OBJS) $(OMP_OBJS) $(OBJ_DIR)/test_openmp.o
-	$(CXX) $(LDFLAGS) $^ -o $@
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 endif
 
 # CUDA (se abilitato)
