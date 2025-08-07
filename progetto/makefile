@@ -129,7 +129,7 @@ $(SEQ_EXE): $(CPU_OBJS) $(OBJ_DIR)/main_seq.o
 
 # OpenMP (se abilitato)
 ifeq ($(OMP),1)
-$(OMP_EXE): $(CPU_OBJS) $(OMP_OBJS) $(OBJ_DIR)/main_openmp.o
+$(OMP_EXE): $(CPU_OBJS) $(OMP_OBJS) $(OBJ_DIR)/test_openmp.o
 	$(CXX) $(LDFLAGS) $^ -o $@
 endif
 
