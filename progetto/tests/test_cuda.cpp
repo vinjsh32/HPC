@@ -49,6 +49,17 @@ int main()
     obdd_cuda_or (dA, dB, &dOr );
     obdd_cuda_not(dB, &dNot);
 
+    // Verifica riduzione: x0 AND x0 => BDD di 3 nodi
+    void* dSelfAnd=nullptr; obdd_cuda_and(dA, dA, &dSelfAnd);
+    DeviceOBDD tmp{};
+    cudaMemcpy(&tmp, dSelfAnd, sizeof(DeviceOBDD), cudaMemcpyDeviceToHost);
+    assert(tmp.size == 3);
+
+    // x0 XOR x0 => costante 0, vettore di 2 nodi
+    void* dSelfXor=nullptr; obdd_cuda_xor(dA, dA, &dSelfXor);
+    cudaMemcpy(&tmp, dSelfXor, sizeof(DeviceOBDD), cudaMemcpyDeviceToHost);
+    assert(tmp.size == 2);
+
     int assign1[3] = {1,1,0};
     assert(eval_device_bdd(dAnd, assign1) == 1);
     assert(eval_device_bdd(dOr,  assign1) == 1);
@@ -66,6 +77,8 @@ int main()
       obdd_cuda_free_device(dAnd);
       obdd_cuda_free_device(dOr);
       obdd_cuda_free_device(dNot);
+      obdd_cuda_free_device(dSelfAnd);
+      obdd_cuda_free_device(dSelfXor);
     obdd_destroy(bddX0);
     obdd_destroy(bddX1);
 
