@@ -57,9 +57,9 @@ extern "C" {
 void unique_table_clear(void);
 
 /* lookup/insert (host‑only per ora – versione device in futuro) */
-OBDDNode* unique_get_or_create(int var,
-                               OBDDNode* low,
-                               OBDDNode* high);
+OBDDNode* unique_table_get_or_create(int var,
+                                     OBDDNode* low,
+                                     OBDDNode* high);
 
 #ifdef __cplusplus
 }
