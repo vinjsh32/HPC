@@ -13,12 +13,17 @@
 #include <omp.h>
 #include <climits>
 
+#ifndef OBDD_OMP_TASK_THRESHOLD
+#define OBDD_OMP_TASK_THRESHOLD 3
+#endif
+
 /* --------------------------------------------------------------------------
  *  Ricorsione parallela con task
  * -------------------------------------------------------------------------- */
 static OBDDNode* obdd_parallel_apply_internal(const OBDDNode* n1,
                                               const OBDDNode* n2,
-                                              OBDD_Op         op)
+                                              OBDD_Op         op,
+                                              int             depth)
 {
     /* 1) memo-lookup thread-safe */
     if (OBDDNode* hit = apply_cache_lookup(n1, n2, static_cast<int>(op)))
@@ -47,11 +52,11 @@ static OBDDNode* obdd_parallel_apply_internal(const OBDDNode* n1,
     OBDDNode *lowRes  = nullptr,
              *highRes = nullptr;
 
-    #pragma omp task shared(lowRes)  firstprivate(n1_low, n2_low, op)
-    lowRes  = obdd_parallel_apply_internal(n1_low,  n2_low,  op);
+    #pragma omp task shared(lowRes)  firstprivate(n1_low, n2_low, op, depth) if(depth < OBDD_OMP_TASK_THRESHOLD)
+    lowRes  = obdd_parallel_apply_internal(n1_low,  n2_low,  op, depth + 1);
 
-    #pragma omp task shared(highRes) firstprivate(n1_high, n2_high, op)
-    highRes = obdd_parallel_apply_internal(n1_high, n2_high, op);
+    #pragma omp task shared(highRes) firstprivate(n1_high, n2_high, op, depth) if(depth < OBDD_OMP_TASK_THRESHOLD)
+    highRes = obdd_parallel_apply_internal(n1_high, n2_high, op, depth + 1);
 
     #pragma omp taskwait
 
@@ -85,7 +90,8 @@ OBDDNode* obdd_parallel_apply_omp(const OBDD* bdd1,
         #pragma omp single nowait
         out = obdd_parallel_apply_internal(bdd1->root,
                                            bdd2 ? bdd2->root : nullptr,
-                                           op);
+                                           op,
+                                           0);
     }
     return out;
 }
