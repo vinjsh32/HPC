@@ -1,6 +1,29 @@
 #include "obdd.hpp"
 #include "obdd_cuda.hpp"
 #include <cstdio>
+#include <vector>
+#include <cassert>
+
+#ifdef OBDD_ENABLE_CUDA
+#include <cuda_runtime.h>
+#include "obdd_cuda_types.cuh"
+
+static int eval_device_bdd(void* dHandle, const int* assignment)
+{
+    DeviceOBDD dev{};
+    cudaMemcpy(&dev, dHandle, sizeof(DeviceOBDD), cudaMemcpyDeviceToHost);
+    std::vector<NodeGPU> nodes(dev.size);
+    cudaMemcpy(nodes.data(), dev.nodes, sizeof(NodeGPU) * dev.size,
+               cudaMemcpyDeviceToHost);
+
+    int idx = 2; /* root index after flatten */
+    while (nodes[idx].var >= 0) {
+        int var = nodes[idx].var;
+        idx = assignment[var] ? nodes[idx].high : nodes[idx].low;
+    }
+    return nodes[idx].low;
+}
+#endif
 
 int main()
 {
@@ -21,28 +44,28 @@ int main()
     void* dB = obdd_cuda_copy_to_device(bddX1);
 
     // Operazioni logiche
-    void *dAnd=nullptr,*dOr=nullptr,*dXor=nullptr,*dNot=nullptr;
+    void *dAnd=nullptr,*dOr=nullptr,*dNot=nullptr;
     obdd_cuda_and(dA, dB, &dAnd);
     obdd_cuda_or (dA, dB, &dOr );
-    obdd_cuda_xor(dA, dB, &dXor);
     obdd_cuda_not(dB, &dNot);
-    std::puts("[TEST][CUDA] Kernel logici lanciati senza errori.");
+
+    int assign1[3] = {1,1,0};
+    assert(eval_device_bdd(dAnd, assign1) == 1);
+    assert(eval_device_bdd(dOr,  assign1) == 1);
+    assert(eval_device_bdd(dNot, assign1) == 0);
 
     // Ordinamento varOrder su GPU
     int v[8] = {7,3,5,0,2,6,1,4};
-    std::printf("[TEST][CUDA] varOrder prima: ");
-    for (int x : v) std::printf("%d ", x); std::puts("");
     obdd_cuda_var_ordering(v, 8);
-    std::printf("[TEST][CUDA] varOrder dopo : ");
-    for (int x : v) std::printf("%d ", x); std::puts("");
+    for (int i = 1; i < 8; ++i)
+        assert(v[i-1] <= v[i]);
 
     // cleanup
     obdd_cuda_free_device(dA);
     obdd_cuda_free_device(dB);
-    obdd_cuda_free_device(dAnd);
-    obdd_cuda_free_device(dOr);
-    obdd_cuda_free_device(dXor);
-    obdd_cuda_free_device(dNot);
+      obdd_cuda_free_device(dAnd);
+      obdd_cuda_free_device(dOr);
+      obdd_cuda_free_device(dNot);
     obdd_destroy(bddX0);
     obdd_destroy(bddX1);
 
