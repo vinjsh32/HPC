@@ -5,7 +5,7 @@
  *    – costruzione di due BDD semplici (x0, x1)
  *    – copy_to_device
  *    – kernel AND / OR / XOR / NOT
- *    – kernel bubble-sort su un vettore varOrder (host → device → host)
+ *    – Thrust sort su un vettore varOrder (host → device → host)
  *
  *  Compilazione (esempio NVCC):
  *      nvcc -std=c++17 -O2 \
@@ -45,12 +45,12 @@ int main()
     obdd_cuda_not(dB, &dNot);       CUDA_CHECK(cudaDeviceSynchronize());
     printf("[CUDA] Kernel logici lanciati senza errori.\n");
 
-    /* --------- 4) bubble-sort GPU su un array ------------------ */
+    /* --------- 4) GPU Thrust sort su un array ------------------ */
     int v[8] = {7,3,5,0,2,6,1,4};
     printf("[CUDA] varOrder prima: ");
     for(int x: v) printf("%d ", x); puts("");
     obdd_cuda_var_ordering(v, 8);
-    printf("[CUDA] varOrder dopo : ");
+    printf("[CUDA] varOrder dopo  : ");
     for(int x: v) printf("%d ", x); puts("");
 
     /* --------- 5) cleanup -------------------------------------- */

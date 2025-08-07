@@ -5,8 +5,7 @@
  *  – Copia ("flatten") di un BDD host → vettore compatto di nodi NodeGPU.
  *  – Kernel Breadth-First (BFS) per le operazioni logiche AND / OR / XOR.
  *  – Kernel specializzato NOT (un solo BDD in ingresso).
- *  – Kernel odd–even transposition sort (bubble-sort GPU) per l’ordinamento del
- *    vettore varOrder.
+ *  – Ordinamento del vettore varOrder tramite Thrust (merge sort parallelo).
  *  – Wrapper C-linkage: copy, AND, OR, XOR, NOT, var_ordering, free.
  *
  *  Il grafo risultante viene ora ridotto in una ROBDD canonica copiandolo su
@@ -27,6 +26,9 @@
 #include <unordered_map>
 #include <climits>
 #include <cstdlib>
+#include <thrust/device_vector.h>
+#include <thrust/device_ptr.h>
+#include <thrust/sort.h>
 
 /* -------------------------------------------------------------------------- */
 /*                     HOST → DEVICE  (flatten + copy)                        */
@@ -192,17 +194,6 @@ __global__ void not_kernel(const NodeGPU* inNodes,
     outNodes[myIdx] = { var, -1, -1 };
 
     frontierCur[tid] = myIdx;
-}
-
-__global__ void oets_phase(int* dArr, int n, int phase)
-{
-    int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    int i   = 2 * tid + phase;
-    if (i + 1 >= n) return;
-
-    int a = dArr[i];
-    int b = dArr[i + 1];
-    if (a > b) { dArr[i] = b; dArr[i + 1] = a; }
 }
 
 /* -------------------------------------------------------------------------- */
@@ -458,21 +449,10 @@ void obdd_cuda_var_ordering(int* hostVarOrder, int n)
 {
     if (!hostVarOrder || n <= 1) return;
 
-    int* dArr = nullptr;
-    CUDA_CHECK(cudaMalloc(&dArr, sizeof(int) * n));
-    CUDA_CHECK(cudaMemcpy(dArr, hostVarOrder, sizeof(int) * n, cudaMemcpyHostToDevice));
-
-    int maxPairs = (n + 1) / 2;
-    int blocks   = (maxPairs + OBDD_CUDA_TPB - 1) / OBDD_CUDA_TPB;
-
-    for (int pass = 0; pass < n; ++pass) {
-        int phase = pass & 1;
-        oets_phase<<<blocks, OBDD_CUDA_TPB>>>(dArr, n, phase);
-    }
-    CUDA_CHECK(cudaDeviceSynchronize());
-
-    CUDA_CHECK(cudaMemcpy(hostVarOrder, dArr, sizeof(int) * n, cudaMemcpyDeviceToHost));
-    CUDA_CHECK(cudaFree(dArr));
+    thrust::device_vector<int> d(hostVarOrder, hostVarOrder + n);
+    thrust::sort(d.begin(), d.end());
+    CUDA_CHECK(cudaMemcpy(hostVarOrder, thrust::raw_pointer_cast(d.data()),
+                          sizeof(int) * n, cudaMemcpyDeviceToHost));
 }
 
 } /* extern "C" */

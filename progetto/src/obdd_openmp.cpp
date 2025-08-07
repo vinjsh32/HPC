@@ -12,6 +12,7 @@
 
 #include <omp.h>
 #include <climits>
+#include <vector>
 
 #ifndef OBDD_OMP_TASK_THRESHOLD
 #define OBDD_OMP_TASK_THRESHOLD 3
@@ -106,23 +107,42 @@ OBDDNode* obdd_parallel_not_omp(const OBDD* a)
 { return a ? obdd_parallel_apply_omp(a, nullptr, OBDD_NOT)  : nullptr; }
 
 /* ------------------------------------------------------------------
- *  Odd–Even Transposition Sort sul vettore varOrder
+ *  Merge sort parallelo sul vettore varOrder
  * ------------------------------------------------------------------ */
+static void merge(int* arr, int* tmp, int l, int m, int r)
+{
+    int i = l, j = m, k = l;
+    while (i < m && j < r)
+        tmp[k++] = (arr[i] <= arr[j]) ? arr[i++] : arr[j++];
+    while (i < m) tmp[k++] = arr[i++];
+    while (j < r) tmp[k++] = arr[j++];
+    for (int t = l; t < r; ++t) arr[t] = tmp[t];
+}
+
+static void merge_sort_parallel(int* arr, int* tmp, int l, int r, int depth)
+{
+    if (r - l <= 1) return;
+    int m = l + (r - l) / 2;
+    #pragma omp task shared(arr,tmp) if(depth < OBDD_OMP_TASK_THRESHOLD)
+    merge_sort_parallel(arr, tmp, l, m, depth + 1);
+    #pragma omp task shared(arr,tmp) if(depth < OBDD_OMP_TASK_THRESHOLD)
+    merge_sort_parallel(arr, tmp, m, r, depth + 1);
+    #pragma omp taskwait
+    merge(arr, tmp, l, m, r);
+}
+
 void obdd_parallel_var_ordering_omp(OBDD* bdd)
 {
     if (!bdd || bdd->numVars <= 1) return;
 
     int* vo = bdd->varOrder;
     const int n = bdd->numVars;
+    std::vector<int> tmp(n);
 
-    for (int pass = 0; pass < n; ++pass) {
-        int phase = pass & 1;                        /* 0 = even, 1 = odd */
-        #pragma omp parallel for default(none) shared(vo,n,phase)
-        for (int i = phase; i < n - 1; i += 2) {
-            if (vo[i] > vo[i + 1]) {
-                int tmp = vo[i]; vo[i] = vo[i + 1]; vo[i + 1] = tmp;
-            }
-        }
+    #pragma omp parallel
+    {
+        #pragma omp single nowait
+        merge_sort_parallel(vo, tmp.data(), 0, n, 0);
     }
 }
 
