@@ -108,6 +108,7 @@ OBDDNode   *obdd_parallel_apply_omp(const OBDD *bdd1,
    ===================================================== */
 int         is_leaf(const OBDDNode *node);
 OBDDNode   *apply_leaf(OBDD_Op op, int v1, int v2);
+size_t      obdd_nodes_tracked(void);
 
 #ifdef __cplusplus
 } /* extern "C" */
