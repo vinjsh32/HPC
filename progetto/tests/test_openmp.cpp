@@ -1,13 +1,10 @@
 #include "obdd.hpp"
-#include <cassert>
-#include <cstdio>
+#include <gtest/gtest.h>
 
-int main()
+#ifdef OBDD_ENABLE_OPENMP
+
+TEST(OpenMPBackend, LogicalOperations)
 {
-#ifndef OBDD_ENABLE_OPENMP
-    std::printf("[TEST][OMP] Backend OpenMP disabilitato: compila con OMP=1.\n");
-    return 0;
-#else
     int order[2] = {0,1};
     OBDD* bddX0 = obdd_create(2, order);
     OBDD* bddX1 = obdd_create(2, order);
@@ -22,23 +19,38 @@ int main()
     int assignTF[2] = {1,0};
 
     OBDD tmp{andRoot,2,order};
-    assert(obdd_evaluate(&tmp, assignTT) == 1);
-    assert(obdd_evaluate(&tmp, assignTF) == 0);
+    EXPECT_EQ(obdd_evaluate(&tmp, assignTT), 1);
+    EXPECT_EQ(obdd_evaluate(&tmp, assignTF), 0);
     tmp.root = orRoot;
-    assert(obdd_evaluate(&tmp, assignTF) == 1);
+    EXPECT_EQ(obdd_evaluate(&tmp, assignTF), 1);
     tmp.root = notRoot;
-    assert(obdd_evaluate(&tmp, assignTF) == 1);
+    EXPECT_EQ(obdd_evaluate(&tmp, assignTF), 1);
 
+    obdd_destroy(bddX0);
+    obdd_destroy(bddX1);
+}
+
+TEST(OpenMPBackend, VarOrdering)
+{
     int v[8] = {7,3,5,0,2,6,1,4};
     OBDD dummy{nullptr,8,v};
     obdd_parallel_var_ordering_omp(&dummy);
     for (int i = 1; i < 8; ++i)
-        assert(v[i-1] <= v[i]);
+        EXPECT_LE(v[i-1], v[i]);
+}
 
-    obdd_destroy(bddX0);
-    obdd_destroy(bddX1);
-    std::puts("[TEST][OMP] Completato con successo.");
-    return 0;
+#else
+
+TEST(OpenMPBackend, DisabledBackend)
+{
+    GTEST_SKIP() << "Backend OpenMP disabilitato: compila con OMP=1.";
+}
+
 #endif
+
+int main(int argc, char** argv)
+{
+    testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }
 
