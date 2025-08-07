@@ -1,0 +1,3 @@
+digraph OBDD {
+  // Esempio: Node0 -> Node1 [label=0];
+}
