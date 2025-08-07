@@ -25,7 +25,7 @@ struct KeyHash {
 };
 
 /* ---------- modalità GLOBAL vs THREAD_local --------------------*/
-#if defined(DOBDD_PER_THREAD_CACHE)
+#if defined(OBDD_PER_THREAD_CACHE)
 /* ---- 1) cache privata al thread --------------------------------*/
 static thread_local std::unordered_map<Key,OBDDNode*,KeyHash> tl_cache;
 
@@ -85,7 +85,7 @@ void apply_cache_global_merge() {}          /* no-op */
 /* helper per debug / test */
 void apply_cache_clear()
 {
-#if defined(DOBDD_PER_THREAD_CACHE)
+#if defined(OBDD_PER_THREAD_CACHE)
     tl_cache.clear();
 #else
     std::lock_guard<std::mutex> g(mtx);
