@@ -29,6 +29,7 @@
 #include <cstdio>    /* fprintf */
 #include <climits>   /* INT_MAX */
 #include <cstdint>   /* uintptr_t */
+#include <unordered_set> /* tracking nodi allocati */
 
 /* =============================================================
  *  Helper & globals
@@ -53,6 +54,23 @@ static void* xmalloc(size_t sz)
 static OBDDNode* g_falseLeaf = nullptr;
 static OBDDNode* g_trueLeaf  = nullptr;
 
+/* insieme globale dei nodi creati dinamicamente */
+static std::unordered_set<OBDDNode*> g_all_nodes;
+/* numero di BDD attivi, usato per sapere quando liberare le foglie */
+static int g_bdd_count = 0;
+
+static void free_nodes_rec(OBDDNode* node,
+                           std::unordered_set<OBDDNode*>& visited)
+{
+    if (!node || visited.count(node)) return;
+    if (node == g_falseLeaf || node == g_trueLeaf) return;
+    visited.insert(node);
+    free_nodes_rec(node->lowChild, visited);
+    free_nodes_rec(node->highChild, visited);
+    g_all_nodes.erase(node);
+    std::free(node);
+}
+
 /* =============================================================
  *  API pubblica (linkage C)
  * ============================================================*/
@@ -67,14 +85,24 @@ OBDD* obdd_create(int numVars, const int* varOrder)
     b->numVars  = numVars;
     b->varOrder = static_cast<int*>(xmalloc(sizeof(int) * numVars));
     std::memcpy(b->varOrder, varOrder, sizeof(int) * numVars);
+    ++g_bdd_count;
     return b;
 }
 
 void obdd_destroy(OBDD* bdd)
 {
     if (!bdd) return;
+
+    std::unordered_set<OBDDNode*> visited;
+    free_nodes_rec(bdd->root, visited);
+
     std::free(bdd->varOrder);
     std::free(bdd);
+
+    if (--g_bdd_count == 0) {
+        if (g_falseLeaf) { g_all_nodes.erase(g_falseLeaf); std::free(g_falseLeaf); g_falseLeaf = nullptr; }
+        if (g_trueLeaf)  { g_all_nodes.erase(g_trueLeaf);  std::free(g_trueLeaf);  g_trueLeaf  = nullptr; }
+    }
 }
 
 /* --------------------- constant / node_create --------------- */
@@ -85,6 +113,7 @@ OBDDNode* obdd_constant(int value)
         g_falseLeaf->varIndex  = -1;
         g_falseLeaf->lowChild  = nullptr;
         g_falseLeaf->highChild = nullptr;
+        g_all_nodes.insert(g_falseLeaf);
     }
     if (!g_trueLeaf) {
         g_trueLeaf = static_cast<OBDDNode*>(xmalloc(sizeof(OBDDNode)));
@@ -92,6 +121,7 @@ OBDDNode* obdd_constant(int value)
         /* puntatori qualunque != nullptr per riconoscere la foglia */
         g_trueLeaf->lowChild  = reinterpret_cast<OBDDNode*>(0x1);
         g_trueLeaf->highChild = reinterpret_cast<OBDDNode*>(0x1);
+        g_all_nodes.insert(g_trueLeaf);
     }
     return value ? g_trueLeaf : g_falseLeaf;
 }
@@ -102,6 +132,7 @@ OBDDNode* obdd_node_create(int varIndex, OBDDNode* low, OBDDNode* high)
     n->varIndex  = varIndex;
     n->lowChild  = low;
     n->highChild = high;
+    g_all_nodes.insert(n);
     return n;
 }
 
@@ -341,3 +372,8 @@ OBDDNode* build_demo_bdd(const int* varOrder, int numVars)
 }
 
 } /* extern "C" */
+
+extern "C" size_t obdd_nodes_tracked()
+{
+    return g_all_nodes.size();
+}
