@@ -4,8 +4,8 @@
  *
  * Implementa:
  *   • array globale `unique_table[]` (open addressing, size = UNIQUE_SIZE)
- *   • `unique_table_clear()`          – azzera lo storage
- *   • `unique_table_get_or_create()`  – lookup+insert su tripla (var,low,high)
+ *   • `unique_table_clear()`        – azzera lo storage
+ *   • `unique_get_or_create()`      – lookup+insert su tripla (var,low,high)
  *
  *  Al momento esiste solo la variante host; se in futuro servirà un backend
  *  device (CUDA) si potrà allocare una tabella analoga in memoria globale GPU
@@ -31,9 +31,9 @@ void unique_table_clear(void)
     std::memset(unique_table, 0, sizeof(unique_table));
 }
 
-OBDDNode* unique_table_get_or_create(int var,
-                                     OBDDNode* low,
-                                     OBDDNode* high)
+OBDDNode* unique_get_or_create(int var,
+                               OBDDNode* low,
+                               OBDDNode* high)
 {
     /* Regola di riduzione: se i due figli coincidono ⇒ ritorna direttamente */
     if (low == high) return low;
