@@ -63,7 +63,6 @@ endif
 # Core CPU
 CPU_OBJS := \
   $(OBJ_DIR)/obdd_core.o \
-  $(OBJ_DIR)/apply_cache.o \
   $(OBJ_DIR)/apply_cache_c_api.o \
   $(OBJ_DIR)/unique_table.o
 

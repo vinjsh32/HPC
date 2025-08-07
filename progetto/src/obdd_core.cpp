@@ -176,27 +176,25 @@ static OBDDNode* obdd_apply_internal(const OBDDNode* n1,
 {
     /* NOT unario: n2 == nullptr */
     if (op == OBDD_NOT && !n2) {
-        size_t h = apply_hash(n1, nullptr, op);
-        if (apply_cache[h].a == n1 && apply_cache[h].b == nullptr && apply_cache[h].op == op)
-            return apply_cache[h].result;
+        OBDDNode* cached = apply_cache_lookup(n1, nullptr, op);
+        if (cached) return cached;
 
         if (is_leaf(n1)) {
             int v1 = (n1 == obdd_constant(1));
             OBDDNode* res = obdd_constant(!v1);
-            apply_cache[h] = { n1, nullptr, op, res };
+            apply_cache_insert(n1, nullptr, op, res);
             return res;
         }
         OBDDNode* l  = obdd_apply_internal(n1->lowChild,  nullptr, op);
         OBDDNode* hN = obdd_apply_internal(n1->highChild, nullptr, op);
         OBDDNode* newN = obdd_node_create(n1->varIndex, l, hN);
-        apply_cache[h] = { n1, nullptr, op, newN };
+        apply_cache_insert(n1, nullptr, op, newN);
         return newN;
     }
 
     /* memo lookup */
-    size_t h = apply_hash(n1, n2, op);
-    if (apply_cache[h].a == n1 && apply_cache[h].b == n2 && apply_cache[h].op == op)
-        return apply_cache[h].result;
+    OBDDNode* cached = apply_cache_lookup(n1, n2, op);
+    if (cached) return cached;
 
     /* foglie */
     bool leaf1 = is_leaf(n1);
@@ -206,7 +204,7 @@ static OBDDNode* obdd_apply_internal(const OBDDNode* n1,
         int v1 = (n1 == obdd_constant(1));
         int v2 = (n2 == obdd_constant(1));
         OBDDNode* res = apply_leaf(op, v1, v2);
-        apply_cache[h] = { n1, n2, op, res };
+        apply_cache_insert(n1, n2, op, res);
         return res;
     }
 
@@ -224,12 +222,12 @@ static OBDDNode* obdd_apply_internal(const OBDDNode* n1,
     OBDDNode* highRes = obdd_apply_internal(n1_high, n2_high, op);
 
     if (lowRes == highRes) {
-        apply_cache[h] = { n1, n2, op, lowRes };
+        apply_cache_insert(n1, n2, op, lowRes);
         return lowRes;
     }
 
     OBDDNode* res = obdd_node_create(topVar, lowRes, highRes);
-    apply_cache[h] = { n1, n2, op, res };
+    apply_cache_insert(n1, n2, op, res);
     return res;
 }
 
