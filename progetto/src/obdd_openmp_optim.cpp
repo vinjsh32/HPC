@@ -39,7 +39,7 @@ struct KeyHash {
 
 using LocalCache = std::unordered_map<Key, OBDDNode*, KeyHash>;
 
-#if defined(DOBDD_PER_THREAD_CACHE)
+#if defined(OBDD_PER_THREAD_CACHE)
 /* --- lista globale dei TLS per la merge -------------------------*/
 static std::vector<LocalCache*> g_tls;
 static std::mutex               g_tls_mtx;
@@ -123,7 +123,7 @@ OBDDNode* obdd_parallel_apply_omp_opt(const OBDD* A, const OBDD* B, OBDD_Op op)
 {
     const int CUT = 8;          /* K≈2^CUT nodi (empirico)          */
     LocalCache tls;
-#if defined(DOBDD_PER_THREAD_CACHE)
+#if defined(OBDD_PER_THREAD_CACHE)
     register_tls(tls);
 #endif
     OBDDNode* root=nullptr;
@@ -136,7 +136,7 @@ OBDDNode* obdd_parallel_apply_omp_opt(const OBDD* A, const OBDD* B, OBDD_Op op)
                          op,
                          CUT+2, CUT);
     }
-#if defined(DOBDD_PER_THREAD_CACHE)
+#if defined(OBDD_PER_THREAD_CACHE)
     merge_tls_into_master(tls);   /* 🔴 merge finale */
 #endif
     return root;
