@@ -1,0 +1,11 @@
+# Ignore build and output directories
+bin/
+build/
+test_omp
+
+# Ignore object files
+*.o
+
+# Ignore generated data files
+*.csv
+*.png
