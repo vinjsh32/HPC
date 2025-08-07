@@ -9,6 +9,8 @@
  * operatori logici binari/unari e un wrapper unico obdd_cuda_apply.
  *
  * Tutte le API sono disponibili solo se si compila con OBDD_ENABLE_CUDA.
+ * Ogni operazione logica restituisce una ROBDD ridotta copiando
+ * temporaneamente il risultato su host e invocando obdd_reduce().
  */
 
 #ifdef __cplusplus

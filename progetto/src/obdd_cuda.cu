@@ -9,9 +9,8 @@
  *    vettore varOrder.
  *  – Wrapper C-linkage: copy, AND, OR, XOR, NOT, var_ordering, free.
  *
- *  ⚠️ Nota: il grafo risultante su GPU NON è ridotto (non è una ROBDD canonica).
- *     Se ti serve la canonicità, aggiungi una unique-table device-side oppure
- *     copia il risultato su host e lancia obdd_reduce().
+ *  Il grafo risultante viene ora ridotto in una ROBDD canonica copiandolo su
+ *  host e invocando obdd_reduce().
  */
 
 #include "obdd_cuda.hpp"
@@ -27,6 +26,7 @@
 #include <queue>
 #include <unordered_map>
 #include <climits>
+#include <cstdlib>
 
 /* -------------------------------------------------------------------------- */
 /*                     HOST → DEVICE  (flatten + copy)                        */
@@ -211,6 +211,50 @@ __global__ void oets_phase(int* dArr, int n, int phase)
 
 namespace {
 
+static OBDDNode* rebuild_host_bdd(const std::vector<NodeGPU>& nodes,
+                                  int idx,
+                                  std::vector<OBDDNode*>& cache)
+{
+    if (idx == 0) return obdd_constant(0);
+    if (idx == 1) return obdd_constant(1);
+    if (cache[idx]) return cache[idx];
+    const NodeGPU& n = nodes[idx];
+    OBDDNode* low  = rebuild_host_bdd(nodes, n.low,  cache);
+    OBDDNode* high = rebuild_host_bdd(nodes, n.high, cache);
+    cache[idx] = obdd_node_create(n.var, low, high);
+    return cache[idx];
+}
+
+static void reduce_device_obdd(void** dHandle)
+{
+    if (!dHandle || !*dHandle) return;
+
+    DeviceOBDD dev{};
+    CUDA_CHECK(cudaMemcpy(&dev, *dHandle, sizeof(DeviceOBDD), cudaMemcpyDeviceToHost));
+
+    std::vector<NodeGPU> nodes(dev.size);
+    CUDA_CHECK(cudaMemcpy(nodes.data(), dev.nodes,
+                          sizeof(NodeGPU) * dev.size,
+                          cudaMemcpyDeviceToHost));
+
+    CUDA_CHECK(cudaFree(dev.nodes));
+    CUDA_CHECK(cudaFree(*dHandle));
+
+    std::vector<OBDDNode*> cache(dev.size, nullptr);
+    int rootIdx = (dev.size > 2) ? 2 : 0;
+    OBDDNode* root = rebuild_host_bdd(nodes, rootIdx, cache);
+    OBDDNode* reduced = obdd_reduce(root);
+
+    OBDD tmpUn{root, dev.nVars, static_cast<int*>(std::malloc(sizeof(int)*dev.nVars))};
+    obdd_destroy(&tmpUn);
+
+    OBDD tmpRed{reduced, dev.nVars, static_cast<int*>(std::malloc(sizeof(int)*dev.nVars))};
+    DeviceOBDD* newDev = copy_flat_to_device(&tmpRed);
+    obdd_destroy(&tmpRed);
+
+    *dHandle = static_cast<void*>(newDev);
+}
+
 template<int OP>
 void gpu_binary_apply(void* dA, void* dB, void** dOut)
 {
@@ -284,6 +328,8 @@ void gpu_binary_apply(void* dA, void* dB, void** dOut)
     CUDA_CHECK(cudaFree(dCurSz));
     CUDA_CHECK(cudaFree(dNextSz));
     CUDA_CHECK(cudaFree(dNodeCnt));
+
+    reduce_device_obdd(dOut);
 }
 
 } // anon
@@ -391,6 +437,8 @@ void obdd_cuda_not(void* dA, void** dOut)
     CUDA_CHECK(cudaFree(dCurSz));
     CUDA_CHECK(cudaFree(dNextSz));
     CUDA_CHECK(cudaFree(dNodeCnt));
+
+    reduce_device_obdd(dOut);
 }
 
 void* obdd_cuda_apply(void* dA, void* dB, OBDD_Op op)
