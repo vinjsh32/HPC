@@ -1,6 +1,6 @@
 # OBDD Project
 
-This project implements an Ordered Binary Decision Diagram (OBDD) library with optional OpenMP and CUDA backends. It provides a sequential CPU implementation and optional parallel versions for multi-core CPUs and NVIDIA GPUs.
+This project implements an Ordered Binary Decision Diagram (OBDD) library with optional OpenMP and CUDA backends. It provides a sequential CPU implementation and optional parallel versions for multi-core CPUs and NVIDIA GPUs. Variable reordering now uses a parallel merge sort on the CPU and Thrust-based sorting on the GPU.
 
 ## Building
 

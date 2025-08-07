@@ -54,6 +54,7 @@ def parse_args():
 
     p.add_argument("--run-bench", help="path to compiled run_bench executable")
     p.add_argument("--run-stress", help="path to compiled run_stress executable")
+    p.add_argument("--run-sort", help="path to executable testing var-ordering")
 
     p.add_argument("--out", default="micro_results.csv",
                    help="output CSV for micro benchmarks")
@@ -115,6 +116,13 @@ def run_micro(exec_path: str, out_csv: pathlib.Path, threads: List[int], bits_ov
                 print("[micro]", " ".join(cmd))
                 subprocess.check_call(cmd, env=env)
     print(f"[micro] OK results -> {out_csv}")
+
+
+def run_sort(exec_path: str):
+    if not exec_path:
+        return
+    print("[sort]", exec_path)
+    subprocess.check_call([exec_path])
 
 # ------------------------------------------------------------
 # --------------------- STRESS Parity-n -----------------------
@@ -264,6 +272,10 @@ def main():
                    args.min, args.max, args.step, args.rep, threads)
         if not args.no_plots:
             plot_stress(pathlib.Path(args.stress_out))
+
+    # optional sort benchmark
+    if args.run_sort:
+        run_sort(args.run_sort)
 
     print("✔ benchmark(s) completed on",
           datetime.now().strftime("%Y-%m-%d %H:%M"))

@@ -3,7 +3,7 @@
  *  ----------------
  *  Collaudo rapido del backend OpenMP:
  *    – costruzione di due BDD di prova
- *    – var-ordering parallelo
+ *    – var-ordering parallelo (merge sort)
  *    – AND / OR / XOR / NOT paralleli
  *    – valutazione di un assegnamento
  *
@@ -58,9 +58,9 @@ int main()
 
     printf("[OMP] size(demo) prima del sort  = %d\n", obdd_size(bdd->root));
 
-    /* -------  Parallel var-ordering (bubble sort) --------------- */
+    /* -------  Parallel var-ordering (merge sort) ---------------- */
     obdd_parallel_var_ordering_omp(bdd);
-    printf("[OMP] varOrder dopo bubble-sort  = ");
+    printf("[OMP] varOrder dopo merge-sort   = ");
     for (int i = 0; i < 10; ++i) printf("%d ", bdd->varOrder[i]);
     puts("");
 

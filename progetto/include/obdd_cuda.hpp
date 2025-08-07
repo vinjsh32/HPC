@@ -33,7 +33,7 @@ void obdd_cuda_not(void* dA,           void** dOut);
 /* ---- wrapper unico ------------------------------------------------ */
 void* obdd_cuda_apply(void* dA, void* dB, OBDD_Op op);
 
-/* ---- ordinamento variabili (bubble sort GPU) --------------------- */
+/* ---- ordinamento variabili (Thrust merge sort GPU) --------------- */
 void obdd_cuda_var_ordering(int* hostVarOrder, int n);
 
 #endif /* OBDD_ENABLE_CUDA */

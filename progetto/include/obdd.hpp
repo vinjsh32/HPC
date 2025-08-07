@@ -93,7 +93,7 @@ OBDDNode* obdd_parallel_apply_omp_optim(const OBDD* A,
                                         const OBDD* B,
                                         OBDD_Op      op,
                                         size_t       approx_nodes = 0);
-void        obdd_parallel_var_ordering_omp(OBDD *bdd);         /* bubble‑sort demo */
+void        obdd_parallel_var_ordering_omp(OBDD *bdd);         /* parallel merge sort */
 OBDDNode   *obdd_parallel_and_omp(const OBDD *bdd1, const OBDD *bdd2);
 OBDDNode   *obdd_parallel_or_omp (const OBDD *bdd1, const OBDD *bdd2);
 OBDDNode   *obdd_parallel_not_omp(const OBDD *bdd);
