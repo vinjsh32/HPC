@@ -20,6 +20,11 @@ make OMP=1 CUDA=0
 ```
 This adds OpenMP support and builds `bin/test_omp`.
 
+The OpenMP backend now mantiene una cache per-thread per la funzione `apply`
+al fine di evitare contention sui lock. Ogni thread utilizza una `unordered_map`
+locale e, al termine delle regioni parallele, le cache vengono fuse nel thread
+master per riutilizzare i risultati nelle chiamate successive.
+
 ### CUDA backend
 
 ```bash

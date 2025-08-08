@@ -1,4 +1,5 @@
 #include "obdd.hpp"
+#include "apply_cache.hpp"
 #include <gtest/gtest.h>
 
 OBDDNode* obdd_parallel_apply_omp_opt(const OBDD*, const OBDD*, OBDD_Op);
@@ -75,6 +76,20 @@ TEST(OpenMPBackend, VarOrdering)
     obdd_parallel_var_ordering_omp(&dummy);
     for (int i = 1; i < 8; ++i)
         EXPECT_LE(v[i-1], v[i]);
+}
+
+TEST(OpenMPBackend, CacheMerge)
+{
+    int order[1] = {0};
+    OBDD* bdd = obdd_create(1, order);
+    bdd->root = obdd_node_create(0, OBDD_FALSE, OBDD_TRUE);
+
+    OBDDNode* res = obdd_parallel_and_omp(bdd, bdd);
+    OBDDNode* cached = apply_cache_lookup(bdd->root, bdd->root, OBDD_AND);
+    EXPECT_EQ(cached, res);
+
+    obdd_destroy(bdd);
+    apply_cache_clear();
 }
 
 #else
