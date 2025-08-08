@@ -1,6 +1,12 @@
 # OBDD Project
 
-This project implements an Ordered Binary Decision Diagram (OBDD) library with optional OpenMP and CUDA backends. It provides a sequential CPU implementation and optional parallel versions for multi-core CPUs and NVIDIA GPUs. Variable reordering now uses a parallel merge sort on the CPU and Thrust-based sorting on the GPU.
+This project implements an Ordered Binary Decision Diagram (OBDD) library with optional OpenMP and CUDA backends. It provides a sequential CPU implementation and optional parallel versions for multi-core CPUs and NVIDIA GPUs. Variable reordering uses a parallel merge sort on the CPU and Thrust-based sorting on the GPU.
+
+## Design choices
+
+* **Memory management** – all dynamically created nodes are tracked in a global set so that `obdd_destroy` can reclaim every allocation. Constant leaves are singletons and freed when the last BDD handle is destroyed.
+* **C/C++ interface** – the public API is defined in `include/obdd.hpp` and exposed to pure C code through the lightweight wrapper `include/obdd.h`, avoiding extra wrapper layers.
+* **Automatic CUDA architecture** – `make` invokes `scripts/detect_gpu_arch.sh` to query `nvidia-smi` and pick the appropriate `-gencode` flag. This removes the need to manually edit `NVCCFLAGS` when compiling on different GPUs.
 
 ## Building
 
@@ -20,17 +26,14 @@ make OMP=1 CUDA=0
 ```
 This adds OpenMP support and builds `bin/test_omp`.
 
-The OpenMP backend now mantiene una cache per-thread per la funzione `apply`
-al fine di evitare contention sui lock. Ogni thread utilizza una `unordered_map`
-locale e, al termine delle regioni parallele, le cache vengono fuse nel thread
-master per riutilizzare i risultati nelle chiamate successive.
+The OpenMP backend keeps a per-thread cache for the `apply` function to reduce lock contention. Each thread uses a local `unordered_map` and, at the end of parallel regions, caches are merged in the master thread.
 
 ### CUDA backend
 
 ```bash
 make CUDA=1
 ```
-Requires `nvcc` in your PATH and produces `bin/test_cuda` in addition to the CPU binaries.
+Requires `nvcc` in your PATH and produces `bin/test_cuda` in addition to the CPU binaries. The GPU architecture is detected automatically.
 
 ## Testing
 
@@ -44,12 +47,4 @@ make CUDA=1 run-cuda       # CUDA test
 
 ## Example usage
 
-After building, execute the binaries in `bin/`:
-
-```bash
-./bin/test_seq                       # sequential example
-OMP_NUM_THREADS=4 ./bin/test_omp     # OpenMP with 4 threads
-./bin/test_cuda                      # CUDA example
-```
-
-These examples demonstrate evaluating and combining OBDDs on different backends.
+After building, execute the binaries in `bin/` to run the GoogleTest-based test suites for each backend.
