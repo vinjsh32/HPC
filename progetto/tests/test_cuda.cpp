@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <vector>
 #include <cassert>
+#include <cstdlib>
 
 #ifdef OBDD_ENABLE_CUDA
 #include <cuda_runtime.h>
@@ -70,6 +71,32 @@ int main()
     obdd_cuda_var_ordering(v, 8);
     for (int i = 1; i < 8; ++i)
         assert(v[i-1] <= v[i]);
+
+    // Test: BDD grandi oltre il limite configurato
+    setenv("OBDD_CUDA_MAX_PAIRS", "16", 1);
+
+    OBDD* bigA = obdd_create(3, order);
+    OBDD* bigB = obdd_create(3, order);
+
+    OBDDNode* a2 = obdd_node_create(2, obdd_constant(0), obdd_constant(1));
+    OBDDNode* a1 = obdd_node_create(1, obdd_constant(0), a2);
+    bigA->root = obdd_node_create(0, a1, a2);
+
+    OBDDNode* b2 = obdd_node_create(2, obdd_constant(0), obdd_constant(1));
+    OBDDNode* b1 = obdd_node_create(1, obdd_constant(0), b2);
+    bigB->root = obdd_node_create(0, b1, b2);
+
+    void* dBigA = obdd_cuda_copy_to_device(bigA);
+    void* dBigB = obdd_cuda_copy_to_device(bigB);
+
+    void* dTooLarge = nullptr;
+    obdd_cuda_and(dBigA, dBigB, &dTooLarge);
+    assert(dTooLarge == nullptr);
+
+    obdd_cuda_free_device(dBigA);
+    obdd_cuda_free_device(dBigB);
+    obdd_destroy(bigA);
+    obdd_destroy(bigB);
 
     // cleanup
     obdd_cuda_free_device(dA);

@@ -25,6 +25,7 @@
 #include <queue>
 #include <unordered_map>
 #include <climits>
+#include <cstdio>
 #include <cstdlib>
 #include <thrust/device_vector.h>
 #include <thrust/device_ptr.h>
@@ -246,6 +247,16 @@ static void reduce_device_obdd(void** dHandle)
     *dHandle = static_cast<void*>(newDev);
 }
 
+static size_t max_pairs_limit()
+{
+    const char* env = std::getenv("OBDD_CUDA_MAX_PAIRS");
+    if (!env) return static_cast<size_t>(INT_MAX);
+    char* end = nullptr;
+    unsigned long long val = std::strtoull(env, &end, 10);
+    if (end == env) return static_cast<size_t>(INT_MAX);
+    return static_cast<size_t>(val);
+}
+
 template<int OP>
 void gpu_binary_apply(void* dA, void* dB, void** dOut)
 {
@@ -253,8 +264,26 @@ void gpu_binary_apply(void* dA, void* dB, void** dOut)
     CUDA_CHECK(cudaMemcpy(&A, dA, sizeof(DeviceOBDD), cudaMemcpyDeviceToHost));
     CUDA_CHECK(cudaMemcpy(&B, dB, sizeof(DeviceOBDD), cudaMemcpyDeviceToHost));
 
-    const int MAX_PAIRS = A.size * B.size;
-    const int MAX_NODES = 2 + MAX_PAIRS * 2;
+    size_t reqPairs = static_cast<size_t>(A.size) * static_cast<size_t>(B.size);
+    size_t limit = max_pairs_limit();
+    if (reqPairs > limit || reqPairs > static_cast<size_t>(INT_MAX)) {
+        std::fprintf(stderr,
+                     "[OBDD][CUDA] richiesti %zu pair, limite %zu superato\n",
+                     reqPairs, limit);
+        *dOut = nullptr;
+        return;
+    }
+    int MAX_PAIRS = static_cast<int>(reqPairs);
+
+    size_t reqNodes = 2 + reqPairs * 2;
+    if (reqNodes > static_cast<size_t>(INT_MAX)) {
+        std::fprintf(stderr,
+                     "[OBDD][CUDA] richiesti %zu nodi oltre INT_MAX\n",
+                     reqNodes);
+        *dOut = nullptr;
+        return;
+    }
+    int MAX_NODES = static_cast<int>(reqNodes);
 
     NodeGPU* dNodes = nullptr;
     CUDA_CHECK(cudaMalloc(&dNodes, sizeof(NodeGPU) * MAX_NODES));
