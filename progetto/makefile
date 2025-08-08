@@ -28,17 +28,8 @@ CUDA_LIB  ?= $(CUDA_HOME)/lib64
 # ------------------------ Flags comuni --------------------------
 CXXFLAGS   := -std=c++17 -O2 -I$(INC_DIR) -I$(SRC_DIR)
 
-# <<< MODIFICA QUI: NVCCFLAGS multi-arch per evitare "forward compatibility" >>>
-NVCCFLAGS  := -std=c++17 -O2 -I$(INC_DIR) -I$(SRC_DIR) \
-  -gencode arch=compute_52,code=sm_52 \
-  -gencode arch=compute_61,code=sm_61 \
-  -gencode arch=compute_70,code=sm_70 \
-  -gencode arch=compute_75,code=sm_75 \
-  -gencode arch=compute_80,code=sm_80 \
-  -gencode arch=compute_86,code=sm_86 \
-  -gencode arch=compute_89,code=sm_89 \
-  --expt-extended-lambda
-# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+NVCC_ARCH  ?= $(shell ./scripts/detect_gpu_arch.sh)
+NVCCFLAGS  := -std=c++17 -O2 -I$(INC_DIR) -I$(SRC_DIR) $(NVCC_ARCH) --expt-extended-lambda
 
 LDFLAGS    :=
 LDLIBS     := -lgtest -pthread
@@ -123,8 +114,8 @@ $(OBJ_DIR)/%.o: $(TEST_DIR)/%.cpp | dirs
 
 # ------------------------ Link degli eseguibili ------------------
 
-# Sequenziale
-$(SEQ_EXE): $(CPU_OBJS) $(OBJ_DIR)/main_seq.o
+# Sequenziale (test GoogleTest)
+$(SEQ_EXE): $(CPU_OBJS) $(OBJ_DIR)/test_apply.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 # OpenMP (se abilitato)
