@@ -1,15 +1,17 @@
 #include "apply_cache.hpp"
 #include "obdd.hpp"
 #include <unordered_map>
+#include <vector>
 #include <mutex>
 #include <cstdint>
 
+/* -------------------------- chiave hash ------------------------- */
 struct ApplyKey {
     const OBDDNode* a;
     const OBDDNode* b;
-    int op;
-    bool operator==(const ApplyKey& other) const {
-        return a == other.a && b == other.b && op == other.op;
+    int             op;
+    bool operator==(const ApplyKey& o) const {
+        return a==o.a && b==o.b && op==o.op;
     }
 };
 
@@ -21,25 +23,57 @@ struct ApplyKeyHash {
     }
 };
 
-static std::unordered_map<ApplyKey, OBDDNode*, ApplyKeyHash> apply_cache;
-static std::mutex cache_mtx;
+using LocalCache = std::unordered_map<ApplyKey, OBDDNode*, ApplyKeyHash>;
+
+/* TLS per ogni thread ------------------------------------------------------ */
+static thread_local LocalCache tls_cache;
+
+/* Elenco delle TLS da unire a fine regione parallela ---------------------- */
+static std::vector<LocalCache*> g_tls;
+static std::mutex               g_tls_mtx;
+
+static void register_tls(LocalCache& c)
+{
+    std::lock_guard<std::mutex> g(g_tls_mtx);
+    g_tls.push_back(&c);
+}
 
 extern "C" {
 
-void apply_cache_clear(void) {
-    std::lock_guard<std::mutex> g(cache_mtx);
-    apply_cache.clear();
+void apply_cache_clear(void)
+{
+    tls_cache.clear();
+    std::lock_guard<std::mutex> g(g_tls_mtx);
+    g_tls.clear();
 }
 
-OBDDNode* apply_cache_lookup(const OBDDNode* a, const OBDDNode* b, int op) {
-    std::lock_guard<std::mutex> g(cache_mtx);
-    auto it = apply_cache.find({a, b, op});
-    return (it == apply_cache.end()) ? nullptr : it->second;
+void apply_cache_thread_init(void)
+{
+    tls_cache.clear();
+    register_tls(tls_cache);
 }
 
-void apply_cache_insert(const OBDDNode* a, const OBDDNode* b, int op, OBDDNode* result) {
-    std::lock_guard<std::mutex> g(cache_mtx);
-    apply_cache[{a, b, op}] = result;
+OBDDNode* apply_cache_lookup(const OBDDNode* a, const OBDDNode* b, int op)
+{
+    auto it = tls_cache.find({a,b,op});
+    return (it==tls_cache.end()) ? nullptr : it->second;
+}
+
+void apply_cache_insert(const OBDDNode* a, const OBDDNode* b, int op, OBDDNode* result)
+{
+    tls_cache[{a,b,op}] = result;
+}
+
+void apply_cache_merge(void)
+{
+    std::lock_guard<std::mutex> g(g_tls_mtx);
+    if (g_tls.empty()) return;
+    LocalCache& master = *g_tls.front();
+    for (auto* c : g_tls) {
+        if (c != &master)
+            master.insert(c->begin(), c->end());
+    }
 }
 
 } // extern "C"
+

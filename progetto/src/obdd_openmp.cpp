@@ -3,7 +3,7 @@
  * @brief Backend parallelo OpenMP per OBDD/ROBDD.
  *
  *  – Versioni multi-thread di apply / AND-OR-XOR-NOT e var-ordering.
- *  – Condivide la apply-cache con il core, protetta da lock.
+ *  – Condivide la apply-cache con il core, ora per-thread e senza lock.
  *  – API con linkage C (vedi obdd.hpp).
  */
 
@@ -26,7 +26,7 @@ static OBDDNode* obdd_parallel_apply_internal(const OBDDNode* n1,
                                               OBDD_Op         op,
                                               int             depth)
 {
-    /* 1) memo-lookup thread-safe */
+    /* 1) memo-lookup nella cache locale */
     if (OBDDNode* hit = apply_cache_lookup(n1, n2, static_cast<int>(op)))
         return hit;
 
@@ -66,7 +66,7 @@ static OBDDNode* obdd_parallel_apply_internal(const OBDDNode* n1,
                     ? lowRes
                     : obdd_node_create(var, lowRes, highRes);
 
-    /* 6) salva in cache */
+    /* 6) salva nella cache locale */
     apply_cache_insert(n1, n2, static_cast<int>(op), res);
 
     return res;
@@ -88,12 +88,14 @@ OBDDNode* obdd_parallel_apply_omp(const OBDD* bdd1,
 
     #pragma omp parallel
     {
+        apply_cache_thread_init();
         #pragma omp single nowait
         out = obdd_parallel_apply_internal(bdd1->root,
                                            bdd2 ? bdd2->root : nullptr,
                                            op,
                                            0);
     }
+    apply_cache_merge();
     return out;
 }
 

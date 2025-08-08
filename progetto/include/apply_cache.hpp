@@ -10,17 +10,26 @@ extern "C" {
 
 /* --------------------------------------------------------------------------
  *  Memoization cache per la funzione apply.
- *  Ora implementata con std::unordered_map e accesso thread-safe.
+ *  Ogni thread mantiene una cache locale (thread_local) senza lock.
+ *  Prima di usare la cache in una regione parallela chiamare
+ *  apply_cache_thread_init() e, al termine, unire le cache con
+ *  apply_cache_merge().
  * -------------------------------------------------------------------------- */
 
-/* Svuota la cache globale */
+/* Svuota la cache del thread corrente e azzera i registri delle TLS */
 void apply_cache_clear(void);
 
-/* Lookup thread-safe: ritorna il risultato memorizzato oppure NULL */
+/* Inizializza la cache locale del thread e la registra per la merge finale */
+void apply_cache_thread_init(void);
+
+/* Lookup nella cache locale: ritorna il risultato memorizzato oppure NULL */
 OBDDNode* apply_cache_lookup(const OBDDNode* a, const OBDDNode* b, int op);
 
-/* Inserisce nella cache in modo thread-safe */
+/* Inserisce nella cache locale */
 void apply_cache_insert(const OBDDNode* a, const OBDDNode* b, int op, OBDDNode* result);
+
+/* Merge di tutte le cache locali nel thread master */
+void apply_cache_merge(void);
 
 #ifdef __cplusplus
 }
