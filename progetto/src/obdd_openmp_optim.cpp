@@ -80,13 +80,20 @@ static OBDDNode* apply_no_spawn(LocalCache& L,
     auto it = L.find(k);
     if (it!=L.end()) return it->second;
 
-    int v = std::min(f->varIndex, g->varIndex);
+    int v;
+    if (f->varIndex < 0)      v = g->varIndex;
+    else if (g->varIndex < 0) v = f->varIndex;
+    else                      v = std::min(f->varIndex, g->varIndex);
     OBDDNode *fL, *fH, *gL, *gH;
-    if (f->varIndex==v){ fL=f->lowChild;  fH=f->highChild; } else fL=fH=f;
-    if (g->varIndex==v){ gL=g->lowChild;  gH=g->highChild; } else gL=gH=g;
+    if (f->varIndex>=0 && f->varIndex==v){ fL=f->lowChild;  fH=f->highChild; } else fL=fH=f;
+    if (g->varIndex>=0 && g->varIndex==v){ gL=g->lowChild;  gH=g->highChild; } else gL=gH=g;
 
     OBDDNode* low  = apply_no_spawn(L, fL, gL, op);
     OBDDNode* high = apply_no_spawn(L, fH, gH, op);
+    if (low == high) {
+        L[k] = low;
+        return low;
+    }
     OBDDNode* res  = obdd_node_create(v, low, high);
     L[k] = res;
     return res;
@@ -102,10 +109,13 @@ static OBDDNode* apply_rec(LocalCache& L,
     if (depth < CUT)
         return apply_no_spawn(L, f, g, op);
 
-    int v = std::min(f->varIndex, g->varIndex);
+    int v;
+    if (f->varIndex < 0)      v = g->varIndex;
+    else if (g->varIndex < 0) v = f->varIndex;
+    else                      v = std::min(f->varIndex, g->varIndex);
     OBDDNode *fL,*fH,*gL,*gH;
-    if (f->varIndex==v){ fL=f->lowChild; fH=f->highChild; } else fL=fH=f;
-    if (g->varIndex==v){ gL=g->lowChild; gH=g->highChild; } else gL=gH=g;
+    if (f->varIndex>=0 && f->varIndex==v){ fL=f->lowChild; fH=f->highChild; } else fL=fH=f;
+    if (g->varIndex>=0 && g->varIndex==v){ gL=g->lowChild; gH=g->highChild; } else gL=gH=g;
 
     OBDDNode *low=nullptr,*high=nullptr;
     #pragma omp task shared(low)
@@ -113,6 +123,7 @@ static OBDDNode* apply_rec(LocalCache& L,
     #pragma omp task shared(high)
     high = apply_rec(L, fH, gH, op, depth-1, CUT);
     #pragma omp taskwait
+    if (low == high) return low;
     return obdd_node_create(v, low, high);
 }
 
@@ -130,11 +141,11 @@ OBDDNode* obdd_parallel_apply_omp_opt(const OBDD* A, const OBDD* B, OBDD_Op op)
     #pragma omp parallel
     {
         #pragma omp single nowait
-        root = apply_rec(tls,
-                         A->root,
-                         B?B->root:obdd_constant(0),
-                         op,
-                         CUT+2, CUT);
+        {
+            OBDDNode* broot = (op == OBDD_NOT) ? obdd_constant(1) : (B ? B->root : obdd_constant(0));
+            OBDD_Op realOp = (op == OBDD_NOT) ? OBDD_XOR : op;
+            root = apply_rec(tls, A->root, broot, realOp, CUT+2, CUT);
+        }
     }
 #if defined(OBDD_PER_THREAD_CACHE)
     merge_tls_into_master(tls);   /* 🔴 merge finale */
