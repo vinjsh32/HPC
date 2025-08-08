@@ -1,6 +1,8 @@
 #include "obdd.hpp"
 #include <gtest/gtest.h>
 
+OBDDNode* obdd_parallel_apply_omp_opt(const OBDD*, const OBDD*, OBDD_Op);
+
 #ifdef OBDD_ENABLE_OPENMP
 
 TEST(OpenMPBackend, LogicalOperations)
@@ -25,6 +27,42 @@ TEST(OpenMPBackend, LogicalOperations)
     EXPECT_EQ(obdd_evaluate(&tmp, assignTF), 1);
     tmp.root = notRoot;
     EXPECT_EQ(obdd_evaluate(&tmp, assignTF), 1);
+
+    obdd_destroy(bddX0);
+    obdd_destroy(bddX1);
+}
+
+TEST(OpenMPBackend, OptimizedMatchesSequential)
+{
+    int order[2] = {0,1};
+    OBDD* bddX0 = obdd_create(2, order);
+    OBDD* bddX1 = obdd_create(2, order);
+    bddX0->root = obdd_node_create(0, OBDD_FALSE, OBDD_TRUE);
+    bddX1->root = obdd_node_create(1, OBDD_FALSE, OBDD_TRUE);
+
+    int inputs[4][2] = {{0,0},{0,1},{1,0},{1,1}};
+
+    OBDDNode* seq_and = obdd_apply(bddX0, bddX1, OBDD_AND);
+    OBDDNode* par_and = obdd_parallel_apply_omp_opt(bddX0, bddX1, OBDD_AND);
+    OBDD seqBDD{seq_and,2,order};
+    OBDD parBDD{par_and,2,order};
+    for (auto& in : inputs)
+        EXPECT_EQ(obdd_evaluate(&seqBDD, in), obdd_evaluate(&parBDD, in));
+
+    seqBDD.root = obdd_apply(bddX0, bddX1, OBDD_OR);
+    parBDD.root = obdd_parallel_apply_omp_opt(bddX0, bddX1, OBDD_OR);
+    for (auto& in : inputs)
+        EXPECT_EQ(obdd_evaluate(&seqBDD, in), obdd_evaluate(&parBDD, in));
+
+    seqBDD.root = obdd_apply(bddX0, bddX1, OBDD_XOR);
+    parBDD.root = obdd_parallel_apply_omp_opt(bddX0, bddX1, OBDD_XOR);
+    for (auto& in : inputs)
+        EXPECT_EQ(obdd_evaluate(&seqBDD, in), obdd_evaluate(&parBDD, in));
+
+    seqBDD.root = obdd_apply(bddX1, nullptr, OBDD_NOT);
+    parBDD.root = obdd_parallel_apply_omp_opt(bddX1, nullptr, OBDD_NOT);
+    for (auto& in : inputs)
+        EXPECT_EQ(obdd_evaluate(&seqBDD, in), obdd_evaluate(&parBDD, in));
 
     obdd_destroy(bddX0);
     obdd_destroy(bddX1);
