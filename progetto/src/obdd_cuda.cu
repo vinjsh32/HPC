@@ -30,6 +30,7 @@
 #include <thrust/device_vector.h>
 #include <thrust/device_ptr.h>
 #include <thrust/sort.h>
+#include <cub/block/block_scan.cuh>
 
 /* -------------------------------------------------------------------------- */
 /*                     HOST → DEVICE  (flatten + copy)                        */
@@ -133,36 +134,68 @@ __global__ void apply_bfs_kernel(const NodeGPU* __restrict__ A,
                                  NodeGPU* outNodes,
                                  int*  nodeCounter)
 {
+    using BlockScan = cub::BlockScan<int, OBDD_CUDA_TPB>;
+    __shared__ typename BlockScan::TempStorage scanStorage;
+    __shared__ int blockOffsetPairs;
+    __shared__ int blockOffsetNodes;
+    __shared__ int emitCount[OBDD_CUDA_TPB];
+
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    if (tid >= frontierSize) return;
+    bool active = (tid < frontierSize);
 
-    Pair cur = frontierIn[tid];
-    int u = cur.u;
-    int v = cur.v;
+    int emit = 0; // 0 or 2 elements
+    int res = 0;
+    int top = 0, uLow = 0, uHigh = 0, vLow = 0, vHigh = 0;
+    int u = 0, v = 0;
 
-    if (A[u].var < 0 && B[v].var < 0) {
-        int res = logic_op_bit<OP>(A[u].low, B[v].low);
-        frontierIn[tid].u = frontierIn[tid].v = res;
-        return;
+    if (active) {
+        Pair cur = frontierIn[tid];
+        u = cur.u;
+        v = cur.v;
+
+        if (A[u].var < 0 && B[v].var < 0) {
+            res = logic_op_bit<OP>(A[u].low, B[v].low);
+        } else {
+            int varU = (A[u].var < 0) ? INT_MAX : A[u].var;
+            int varV = (B[v].var < 0) ? INT_MAX : B[v].var;
+            top  = (varU < varV) ? varU : varV;
+
+            uLow  = (varU==top) ? A[u].low  : u;
+            uHigh = (varU==top) ? A[u].high : u;
+            vLow  = (varV==top) ? B[v].low  : v;
+            vHigh = (varV==top) ? B[v].high : v;
+
+            emit = 2;
+        }
     }
 
-    int varU = (A[u].var < 0) ? INT_MAX : A[u].var;
-    int varV = (B[v].var < 0) ? INT_MAX : B[v].var;
-    int top  = (varU < varV) ? varU : varV;
+    emitCount[threadIdx.x] = emit;
+    __syncthreads();
 
-    int uLow  = (varU==top) ? A[u].low  : u;
-    int uHigh = (varU==top) ? A[u].high : u;
-    int vLow  = (varV==top) ? B[v].low  : v;
-    int vHigh = (varV==top) ? B[v].high : v;
+    int prefix = 0;
+    int blockTotal = 0;
+    BlockScan(scanStorage).ExclusiveSum(emitCount[threadIdx.x], prefix, blockTotal);
 
-    int pos = atomicAdd(nextCounter, 2);
-    frontierOut[pos]   = { uLow,  vLow  };
-    frontierOut[pos+1] = { uHigh, vHigh };
+    if (threadIdx.x == 0) {
+        blockOffsetPairs = atomicAdd(nextCounter, blockTotal);
+        blockOffsetNodes = atomicAdd(nodeCounter, blockTotal / 2);
+    }
+    __syncthreads();
 
-    int myIdx = atomicAdd(nodeCounter, 1);
-    outNodes[myIdx] = { top, -1, -1 };
+    if (active) {
+        if (emit) {
+            int pos = blockOffsetPairs + prefix;
+            frontierOut[pos]   = { uLow,  vLow  };
+            frontierOut[pos+1] = { uHigh, vHigh };
 
-    frontierIn[tid].u = frontierIn[tid].v = myIdx;
+            int myIdx = blockOffsetNodes + prefix / 2;
+            outNodes[myIdx] = { top, -1, -1 };
+
+            frontierIn[tid].u = frontierIn[tid].v = myIdx;
+        } else {
+            frontierIn[tid].u = frontierIn[tid].v = res;
+        }
+    }
 }
 
 __global__ void not_kernel(const NodeGPU* inNodes,
@@ -173,28 +206,60 @@ __global__ void not_kernel(const NodeGPU* inNodes,
                            NodeGPU* outNodes,
                            int*  nodeCounter)
 {
+    using BlockScan = cub::BlockScan<int, OBDD_CUDA_TPB>;
+    __shared__ typename BlockScan::TempStorage scanStorage;
+    __shared__ int blockOffsetPairs;
+    __shared__ int blockOffsetNodes;
+    __shared__ int emitCount[OBDD_CUDA_TPB];
+
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
-    if (tid >= frontierSize) return;
+    bool active = (tid < frontierSize);
 
-    int u = frontierCur[tid];
+    int emit = 0; // 0 or 2 elements
+    int res = 0;
+    int var = 0, uLow = 0, uHigh = 0;
+    int u = 0;
 
-    if (inNodes[u].var < 0) {
-        frontierCur[tid] = !inNodes[u].low;
-        return;
+    if (active) {
+        u = frontierCur[tid];
+
+        if (inNodes[u].var < 0) {
+            res = !inNodes[u].low;
+        } else {
+            var   = inNodes[u].var;
+            uLow  = inNodes[u].low;
+            uHigh = inNodes[u].high;
+            emit  = 2;
+        }
     }
 
-    int var   = inNodes[u].var;
-    int uLow  = inNodes[u].low;
-    int uHigh = inNodes[u].high;
+    emitCount[threadIdx.x] = emit;
+    __syncthreads();
 
-    int pos = atomicAdd(nextCounter, 2);
-    frontierNext[pos]   = uLow;
-    frontierNext[pos+1] = uHigh;
+    int prefix = 0;
+    int blockTotal = 0;
+    BlockScan(scanStorage).ExclusiveSum(emitCount[threadIdx.x], prefix, blockTotal);
 
-    int myIdx = atomicAdd(nodeCounter, 1);
-    outNodes[myIdx] = { var, -1, -1 };
+    if (threadIdx.x == 0) {
+        blockOffsetPairs = atomicAdd(nextCounter, blockTotal);
+        blockOffsetNodes = atomicAdd(nodeCounter, blockTotal / 2);
+    }
+    __syncthreads();
 
-    frontierCur[tid] = myIdx;
+    if (active) {
+        if (emit) {
+            int pos = blockOffsetPairs + prefix;
+            frontierNext[pos]   = uLow;
+            frontierNext[pos+1] = uHigh;
+
+            int myIdx = blockOffsetNodes + prefix / 2;
+            outNodes[myIdx] = { var, -1, -1 };
+
+            frontierCur[tid] = myIdx;
+        } else {
+            frontierCur[tid] = res;
+        }
+    }
 }
 
 /* -------------------------------------------------------------------------- */
