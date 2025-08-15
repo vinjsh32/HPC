@@ -14,6 +14,8 @@
 #include <climits>
 #include <vector>
 #include <cmath>
+#include <algorithm>
+#include <cassert>
 
 static inline int compute_task_cutoff() {
     return static_cast<int>(std::log2(omp_get_max_threads()));
@@ -126,16 +128,39 @@ static void merge(int* arr, int* tmp, int l, int m, int r)
     for (int t = l; t < r; ++t) arr[t] = tmp[t];
 }
 
-static void merge_sort_parallel(int* arr, int* tmp, int l, int r, int depth, int task_cutoff)
+static void merge_sort_serial(int* arr, int* tmp, int l, int r)
 {
     if (r - l <= 1) return;
     int m = l + (r - l) / 2;
-    #pragma omp task shared(arr,tmp) if(depth < task_cutoff)
-    merge_sort_parallel(arr, tmp, l, m, depth + 1, task_cutoff);
-    #pragma omp task shared(arr,tmp) if(depth < task_cutoff)
-    merge_sort_parallel(arr, tmp, m, r, depth + 1, task_cutoff);
-    #pragma omp taskwait
+    merge_sort_serial(arr, tmp, l, m);
+    merge_sort_serial(arr, tmp, m, r);
     merge(arr, tmp, l, m, r);
+}
+
+static void merge_sort_parallel(int* arr, int* tmp, int l, int r, int task_cutoff)
+{
+    const int n = r - l;
+    if (n <= 1) return;
+
+    const int grainsize = std::max(1, n >> task_cutoff);
+
+    #pragma omp taskgroup
+    {
+        #pragma omp taskloop shared(arr,tmp) grainsize(grainsize)
+        for (int i = l; i < r; i += grainsize) {
+            int start = i;
+            int end   = std::min(i + grainsize, r);
+            merge_sort_serial(arr, tmp, start, end);
+        }
+    }
+
+    for (int size = grainsize; size < n; size *= 2) {
+        for (int left = l; left < r; left += 2 * size) {
+            int mid   = std::min(left + size, r);
+            int right = std::min(left + 2 * size, r);
+            merge(arr, tmp, left, mid, right);
+        }
+    }
 }
 
 void obdd_parallel_var_ordering_omp(OBDD* bdd)
@@ -147,11 +172,22 @@ void obdd_parallel_var_ordering_omp(OBDD* bdd)
     std::vector<int> tmp(n);
     const int task_cutoff = compute_task_cutoff();
 
+#ifndef NDEBUG
+    std::vector<int> original(vo, vo + n);
+#endif
+
     #pragma omp parallel
     {
         #pragma omp single nowait
-        merge_sort_parallel(vo, tmp.data(), 0, n, 0, task_cutoff);
+        merge_sort_parallel(vo, tmp.data(), 0, n, task_cutoff);
     }
+
+#ifndef NDEBUG
+    std::vector<int> check = original;
+    merge_sort_serial(check.data(), tmp.data(), 0, n);
+    for (int i = 0; i < n; ++i)
+        assert(vo[i] == check[i]);
+#endif
 }
 
 } /* extern "C" */
