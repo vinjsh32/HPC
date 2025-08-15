@@ -69,9 +69,12 @@ void apply_cache_merge(void)
     std::lock_guard<std::mutex> g(g_tls_mtx);
     if (g_tls.empty()) return;
     LocalCache& master = *g_tls.front();
-    for (auto* c : g_tls) {
-        if (c != &master)
-            master.merge(*c);
+    const std::size_t tls_size = g_tls.size();
+    #pragma omp parallel for schedule(dynamic)
+    for (std::size_t i = 1; i < tls_size; ++i) {
+        LocalCache* c = g_tls[i];
+        #pragma omp critical
+        master.merge(*c);
     }
 }
 
