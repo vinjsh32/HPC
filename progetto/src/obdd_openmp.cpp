@@ -13,10 +13,11 @@
 #include <omp.h>
 #include <climits>
 #include <vector>
+#include <cmath>
 
-#ifndef OBDD_OMP_TASK_THRESHOLD
-#define OBDD_OMP_TASK_THRESHOLD 3
-#endif
+static inline int compute_task_cutoff() {
+    return static_cast<int>(std::log2(omp_get_max_threads()));
+}
 
 /* --------------------------------------------------------------------------
  *  Ricorsione parallela con task
@@ -24,7 +25,8 @@
 static OBDDNode* obdd_parallel_apply_internal(const OBDDNode* n1,
                                               const OBDDNode* n2,
                                               OBDD_Op         op,
-                                              int             depth)
+                                              int             depth,
+                                              int             task_cutoff)
 {
     /* 1) memo-lookup nella cache locale */
     if (OBDDNode* hit = apply_cache_lookup(n1, n2, static_cast<int>(op)))
@@ -55,11 +57,11 @@ static OBDDNode* obdd_parallel_apply_internal(const OBDDNode* n1,
 
     #pragma omp taskgroup
     {
-        #pragma omp task shared(lowRes)  firstprivate(n1_low, n2_low, op, depth) depend(out:lowRes) final(depth >= OBDD_OMP_TASK_THRESHOLD) if(depth < OBDD_OMP_TASK_THRESHOLD)
-        lowRes  = obdd_parallel_apply_internal(n1_low,  n2_low,  op, depth + 1);
+        #pragma omp task shared(lowRes)  firstprivate(n1_low, n2_low, op, depth, task_cutoff) depend(out:lowRes) final(depth >= task_cutoff) if(depth < task_cutoff)
+        lowRes  = obdd_parallel_apply_internal(n1_low,  n2_low,  op, depth + 1, task_cutoff);
 
-        #pragma omp task shared(highRes) firstprivate(n1_high, n2_high, op, depth) depend(out:highRes) final(depth >= OBDD_OMP_TASK_THRESHOLD) if(depth < OBDD_OMP_TASK_THRESHOLD)
-        highRes = obdd_parallel_apply_internal(n1_high, n2_high, op, depth + 1);
+        #pragma omp task shared(highRes) firstprivate(n1_high, n2_high, op, depth, task_cutoff) depend(out:highRes) final(depth >= task_cutoff) if(depth < task_cutoff)
+        highRes = obdd_parallel_apply_internal(n1_high, n2_high, op, depth + 1, task_cutoff);
     }
 
     /* 5) riduzione locale */
@@ -86,6 +88,7 @@ OBDDNode* obdd_parallel_apply_omp(const OBDD* bdd1,
 
     apply_cache_clear();
     OBDDNode* out = nullptr;
+    const int task_cutoff = compute_task_cutoff();
 
     #pragma omp parallel
     {
@@ -94,7 +97,8 @@ OBDDNode* obdd_parallel_apply_omp(const OBDD* bdd1,
         out = obdd_parallel_apply_internal(bdd1->root,
                                            bdd2 ? bdd2->root : nullptr,
                                            op,
-                                           0);
+                                           0,
+                                           task_cutoff);
     }
     apply_cache_merge();
     return out;
@@ -122,14 +126,14 @@ static void merge(int* arr, int* tmp, int l, int m, int r)
     for (int t = l; t < r; ++t) arr[t] = tmp[t];
 }
 
-static void merge_sort_parallel(int* arr, int* tmp, int l, int r, int depth)
+static void merge_sort_parallel(int* arr, int* tmp, int l, int r, int depth, int task_cutoff)
 {
     if (r - l <= 1) return;
     int m = l + (r - l) / 2;
-    #pragma omp task shared(arr,tmp) if(depth < OBDD_OMP_TASK_THRESHOLD)
-    merge_sort_parallel(arr, tmp, l, m, depth + 1);
-    #pragma omp task shared(arr,tmp) if(depth < OBDD_OMP_TASK_THRESHOLD)
-    merge_sort_parallel(arr, tmp, m, r, depth + 1);
+    #pragma omp task shared(arr,tmp) if(depth < task_cutoff)
+    merge_sort_parallel(arr, tmp, l, m, depth + 1, task_cutoff);
+    #pragma omp task shared(arr,tmp) if(depth < task_cutoff)
+    merge_sort_parallel(arr, tmp, m, r, depth + 1, task_cutoff);
     #pragma omp taskwait
     merge(arr, tmp, l, m, r);
 }
@@ -141,11 +145,12 @@ void obdd_parallel_var_ordering_omp(OBDD* bdd)
     int* vo = bdd->varOrder;
     const int n = bdd->numVars;
     std::vector<int> tmp(n);
+    const int task_cutoff = compute_task_cutoff();
 
     #pragma omp parallel
     {
         #pragma omp single nowait
-        merge_sort_parallel(vo, tmp.data(), 0, n, 0);
+        merge_sort_parallel(vo, tmp.data(), 0, n, 0, task_cutoff);
     }
 }
 
