@@ -78,18 +78,42 @@ TEST(OpenMPBackend, VarOrdering)
         EXPECT_LE(v[i-1], v[i]);
 }
 
-TEST(OpenMPBackend, CacheMerge)
+TEST(OpenMPBackend, SelfAndShortCircuit)
 {
     int order[1] = {0};
     OBDD* bdd = obdd_create(1, order);
     bdd->root = obdd_node_create(0, OBDD_FALSE, OBDD_TRUE);
 
     OBDDNode* res = obdd_parallel_and_omp(bdd, bdd);
-    OBDDNode* cached = apply_cache_lookup(bdd->root, bdd->root, OBDD_AND);
-    EXPECT_EQ(cached, res);
+    OBDD tmp{res,1,order};
+    int in[1] = {0};
+    EXPECT_EQ(obdd_evaluate(&tmp, in), obdd_evaluate(bdd, in));
+    in[0] = 1;
+    EXPECT_EQ(obdd_evaluate(&tmp, in), obdd_evaluate(bdd, in));
 
     obdd_destroy(bdd);
-    apply_cache_clear();
+}
+
+TEST(OpenMPBackend, NullInput)
+{
+    int order[1] = {0};
+    OBDD* bdd = obdd_create(1, order);
+    bdd->root = obdd_node_create(0, OBDD_FALSE, OBDD_TRUE);
+
+    EXPECT_EQ(obdd_parallel_and_omp(nullptr, bdd), nullptr);
+    EXPECT_EQ(obdd_parallel_and_omp(bdd, nullptr), nullptr);
+    EXPECT_EQ(obdd_parallel_not_omp(nullptr), nullptr);
+
+    obdd_destroy(bdd);
+}
+
+TEST(OpenMPBackend, VarOrderingNoChange)
+{
+    int v[1] = {0};
+    OBDD dummy{nullptr,1,v};
+    obdd_parallel_var_ordering_omp(&dummy);
+    EXPECT_EQ(v[0], 0);
+    obdd_parallel_var_ordering_omp(nullptr);
 }
 
 #else
