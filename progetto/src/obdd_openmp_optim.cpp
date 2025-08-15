@@ -10,7 +10,7 @@
  *     -DOBDD_OMP_OPTIM           → compila questo backend
  *     -DOBDD_PER_THREAD_CACHE    → abilita la cache TLS + merge
  *
- *  In run_bench / run_stress definire:
+ *  To integrate in a standalone driver define:
  *       #define APPLY_BIN obdd_parallel_apply_omp_opt
  * -------------------------------------------------------------------------*/
 #include "obdd.hpp"
@@ -153,14 +153,3 @@ OBDDNode* obdd_parallel_apply_omp_opt(const OBDD* A, const OBDD* B, OBDD_Op op)
     return root;
 }
 
-/* ------------------------------------------------------------------
- *  3. Macro-profiling helper (solo se main stand-alone)
- * ------------------------------------------------------------------*/
-#ifdef OBDD_OMP_OPTIM_MAIN
-#include <cstdlib>
-int main(){
-    system("perf stat -d ./run_bench --func parity --bits 16 --threads 1 --repeat 1 --csvout /dev/null");
-    system("perf stat -d ./run_bench --func parity --bits 16 --threads 20 --repeat 1 --csvout /dev/null");
-    return 0;
-}
-#endif

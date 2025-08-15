@@ -61,7 +61,7 @@ OBDDNode* apply_cache_lookup(const OBDDNode* a, const OBDDNode* b, int op)
 
 void apply_cache_insert(const OBDDNode* a, const OBDDNode* b, int op, OBDDNode* result)
 {
-    tls_cache[{a,b,op}] = result;
+    tls_cache.emplace(ApplyKey{a,b,op}, result);
 }
 
 void apply_cache_merge(void)
@@ -71,7 +71,7 @@ void apply_cache_merge(void)
     LocalCache& master = *g_tls.front();
     for (auto* c : g_tls) {
         if (c != &master)
-            master.insert(c->begin(), c->end());
+            master.merge(*c);
     }
 }
 
