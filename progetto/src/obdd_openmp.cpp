@@ -53,13 +53,14 @@ static OBDDNode* obdd_parallel_apply_internal(const OBDDNode* n1,
     OBDDNode *lowRes  = nullptr,
              *highRes = nullptr;
 
-    #pragma omp task shared(lowRes)  firstprivate(n1_low, n2_low, op, depth) if(depth < OBDD_OMP_TASK_THRESHOLD)
-    lowRes  = obdd_parallel_apply_internal(n1_low,  n2_low,  op, depth + 1);
+    #pragma omp taskgroup
+    {
+        #pragma omp task shared(lowRes)  firstprivate(n1_low, n2_low, op, depth) depend(out:lowRes) if(depth < OBDD_OMP_TASK_THRESHOLD)
+        lowRes  = obdd_parallel_apply_internal(n1_low,  n2_low,  op, depth + 1);
 
-    #pragma omp task shared(highRes) firstprivate(n1_high, n2_high, op, depth) if(depth < OBDD_OMP_TASK_THRESHOLD)
-    highRes = obdd_parallel_apply_internal(n1_high, n2_high, op, depth + 1);
-
-    #pragma omp taskwait
+        #pragma omp task shared(highRes) firstprivate(n1_high, n2_high, op, depth) depend(out:highRes) if(depth < OBDD_OMP_TASK_THRESHOLD)
+        highRes = obdd_parallel_apply_internal(n1_high, n2_high, op, depth + 1);
+    }
 
     /* 5) riduzione locale */
     OBDDNode* res = (lowRes == highRes)
