@@ -6,6 +6,20 @@ OBDDNode* obdd_parallel_apply_omp_opt(const OBDD*, const OBDD*, OBDD_Op);
 
 #ifdef OBDD_ENABLE_OPENMP
 
+static OBDDNode* build_and_chain(int idx, int numVars)
+{
+    if (idx == numVars - 1)
+        return obdd_node_create(idx, OBDD_FALSE, OBDD_TRUE);
+    return obdd_node_create(idx, OBDD_FALSE, build_and_chain(idx + 1, numVars));
+}
+
+static OBDDNode* build_or_chain(int idx, int numVars)
+{
+    if (idx == numVars - 1)
+        return obdd_node_create(idx, OBDD_FALSE, OBDD_TRUE);
+    return obdd_node_create(idx, build_or_chain(idx + 1, numVars), OBDD_TRUE);
+}
+
 TEST(OpenMPBackend, LogicalOperations)
 {
     int order[2] = {0,1};
@@ -69,12 +83,77 @@ TEST(OpenMPBackend, OptimizedMatchesSequential)
     obdd_destroy(bddX1);
 }
 
+TEST(OpenMPBackend, ParallelXorLargeBDD)
+{
+    constexpr int N = 10;
+    int order[N];
+    for (int i = 0; i < N; ++i) order[i] = i;
+
+    OBDD* bddA = obdd_create(N, order);
+    OBDD* bddB = obdd_create(N, order);
+    bddA->root = build_and_chain(0, N);
+    bddB->root = build_or_chain(0, N);
+
+    OBDDNode* seqRoot = obdd_apply(bddA, bddB, OBDD_XOR);
+    OBDDNode* parRoot = obdd_parallel_xor_omp(bddA, bddB);
+    OBDD seqBDD{seqRoot, N, order};
+    OBDD parBDD{parRoot, N, order};
+
+    int inputs[N];
+    for (int mask = 0; mask < (1 << N); ++mask) {
+        for (int j = 0; j < N; ++j)
+            inputs[j] = (mask >> j) & 1;
+        EXPECT_EQ(obdd_evaluate(&seqBDD, inputs),
+                  obdd_evaluate(&parBDD, inputs));
+    }
+
+    obdd_destroy(bddA);
+    obdd_destroy(bddB);
+}
+
+TEST(OpenMPBackend, ParallelApplyLargeBDD)
+{
+    constexpr int N = 10;
+    int order[N];
+    for (int i = 0; i < N; ++i) order[i] = i;
+
+    OBDD* bddA = obdd_create(N, order);
+    OBDD* bddB = obdd_create(N, order);
+    bddA->root = build_and_chain(0, N);
+    bddB->root = build_or_chain(0, N);
+
+    OBDDNode* seqRoot = obdd_apply(bddA, bddB, OBDD_AND);
+    OBDDNode* parRoot = obdd_parallel_apply_omp(bddA, bddB, OBDD_AND);
+    OBDD seqBDD{seqRoot, N, order};
+    OBDD parBDD{parRoot, N, order};
+
+    int inputs[N];
+    for (int mask = 0; mask < (1 << N); ++mask) {
+        for (int j = 0; j < N; ++j)
+            inputs[j] = (mask >> j) & 1;
+        EXPECT_EQ(obdd_evaluate(&seqBDD, inputs),
+                  obdd_evaluate(&parBDD, inputs));
+    }
+
+    obdd_destroy(bddA);
+    obdd_destroy(bddB);
+}
+
 TEST(OpenMPBackend, VarOrdering)
 {
     int v[8] = {7,3,5,0,2,6,1,4};
     OBDD dummy{nullptr,8,v};
     obdd_parallel_var_ordering_omp(&dummy);
     for (int i = 1; i < 8; ++i)
+        EXPECT_LE(v[i-1], v[i]);
+}
+
+TEST(OpenMPBackend, VarOrderingComplexVector)
+{
+    int v[12] = {7,3,5,0,2,6,1,4,4,2,3,7};
+    OBDD dummy{nullptr,12,v};
+    obdd_parallel_var_ordering_omp(&dummy);
+    for (int i = 1; i < 12; ++i)
         EXPECT_LE(v[i-1], v[i]);
 }
 
@@ -109,10 +188,12 @@ TEST(OpenMPBackend, NullInput)
 
 TEST(OpenMPBackend, VarOrderingNoChange)
 {
-    int v[1] = {0};
-    OBDD dummy{nullptr,1,v};
+    int v[8] = {0,1,1,2,3,3,4,4};
+    OBDD dummy{nullptr,8,v};
     obdd_parallel_var_ordering_omp(&dummy);
-    EXPECT_EQ(v[0], 0);
+    int expected[8] = {0,1,1,2,3,3,4,4};
+    for (int i = 0; i < 8; ++i)
+        EXPECT_EQ(v[i], expected[i]);
     obdd_parallel_var_ordering_omp(nullptr);
 }
 
