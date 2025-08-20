@@ -2,6 +2,7 @@
 #ifdef OBDD_ENABLE_CUDA
 #include <cuda_runtime.h>
 #include <cstdio>
+#include <cstdlib>
 
 /* Macro di controllo errori minimale */
 #define CUDA_CHECK(call)                                                     \
@@ -10,6 +11,7 @@
         if (_e != cudaSuccess) {                                             \
             std::fprintf(stderr, "[CUDA] %s:%d %s\n", __FILE__, __LINE__,    \
                          cudaGetErrorString(_e));                            \
+            std::abort();                                                    \
         }                                                                    \
     } while (0)
 
