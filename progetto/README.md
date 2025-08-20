@@ -5,6 +5,7 @@ This project implements an Ordered Binary Decision Diagram (OBDD) library with o
 ## Design choices
 
 * **Memory management** – all dynamically created nodes are tracked in a global set so that `obdd_destroy` can reclaim every allocation. Constant leaves are singletons and freed when the last BDD handle is destroyed.
+* **Thread safety** – node creation and destruction are guarded by a global mutex, making the API safe to use from multiple threads.
 * **C/C++ interface** – the public API is defined in `include/obdd.hpp` and exposed to pure C code through the lightweight wrapper `include/obdd.h`, avoiding extra wrapper layers.
 * **Automatic CUDA architecture** – `make` invokes `scripts/detect_gpu_arch.sh` to query `nvidia-smi` and pick the appropriate `-gencode` flag. This removes the need to manually edit `NVCCFLAGS` when compiling on different GPUs.
 
