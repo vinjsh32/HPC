@@ -23,6 +23,7 @@
 
 #include "obdd.hpp"          /* API pubblica              */
 #include "apply_cache.hpp"   /* cache + hash globali      */
+#include "unique_table.hpp" /* tabella unique globale    */
 
 #include <cstring>   /* memcpy, memset */
 #include <cstdlib>   /* malloc, free, exit */
@@ -239,23 +240,6 @@ OBDDNode* obdd_apply(const OBDD* bdd1, const OBDD* bdd2, OBDD_Op opType)
 }
 
 /* --------------------------- reduce ------------------------- */
-#define UNIQUE_SIZE 10007
-
-struct UniqueEntry {
-    int var;
-    const OBDDNode* low;
-    const OBDDNode* high;
-    OBDDNode*       result;
-};
-static UniqueEntry unique_table[UNIQUE_SIZE];
-
-static inline void unique_clear() { std::memset(unique_table, 0, sizeof(unique_table)); }
-static inline size_t triple_hash(int var, const OBDDNode* l, const OBDDNode* h)
-{
-    uintptr_t a = reinterpret_cast<uintptr_t>(l) >> 3;
-    uintptr_t b = reinterpret_cast<uintptr_t>(h) >> 3;
-    return (a ^ b ^ var) % UNIQUE_SIZE;
-}
 
 static OBDDNode* reduce_rec(OBDDNode* root)
 {
@@ -263,27 +247,14 @@ static OBDDNode* reduce_rec(OBDDNode* root)
 
     OBDDNode* l = reduce_rec(root->lowChild);
     OBDDNode* h = reduce_rec(root->highChild);
-    if (l == h) return l;
 
-    size_t idx = triple_hash(root->varIndex, l, h);
-    for (;;) {
-        if (!unique_table[idx].result) {
-            unique_table[idx] = { root->varIndex, l, h, nullptr };
-            unique_table[idx].result = obdd_node_create(root->varIndex, l, h);
-            return unique_table[idx].result;
-        }
-        if (unique_table[idx].var == root->varIndex &&
-            unique_table[idx].low == l &&
-            unique_table[idx].high == h)
-            return unique_table[idx].result;
-        idx = (idx + 1) % UNIQUE_SIZE;
-    }
+    return unique_table_get_or_create(root->varIndex, l, h);
 }
 
 OBDDNode* obdd_reduce(OBDDNode* root)
 {
     if (!root) return nullptr;
-    unique_clear();
+    unique_table_clear();
     return reduce_rec(root);
 }
 
