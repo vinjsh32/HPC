@@ -31,6 +31,7 @@
 #include <climits>   /* INT_MAX */
 #include <cstdint>   /* uintptr_t */
 #include <unordered_set> /* tracking nodi allocati */
+#include <mutex>
 
 /* =============================================================
  *  Helper & globals
@@ -59,6 +60,7 @@ static OBDDNode* g_trueLeaf  = nullptr;
 static std::unordered_set<OBDDNode*> g_all_nodes;
 /* numero di BDD attivi, usato per sapere quando liberare le foglie */
 static int g_bdd_count = 0;
+static std::mutex g_nodes_mutex;
 
 static void free_nodes_rec(OBDDNode* node)
 {
@@ -68,7 +70,10 @@ static void free_nodes_rec(OBDDNode* node)
         free_nodes_rec(node->lowChild);
         free_nodes_rec(node->highChild);
     }
-    g_all_nodes.erase(node);
+    {
+        std::lock_guard<std::mutex> lock(g_nodes_mutex);
+        g_all_nodes.erase(node);
+    }
     std::free(node);
 }
 
@@ -86,7 +91,10 @@ OBDD* obdd_create(int numVars, const int* varOrder)
     b->numVars  = numVars;
     b->varOrder = static_cast<int*>(xmalloc(sizeof(int) * numVars));
     std::memcpy(b->varOrder, varOrder, sizeof(int) * numVars);
-    ++g_bdd_count;
+    {
+        std::lock_guard<std::mutex> lock(g_nodes_mutex);
+        ++g_bdd_count;
+    }
     return b;
 }
 
@@ -99,7 +107,12 @@ void obdd_destroy(OBDD* bdd)
     std::free(bdd->varOrder);
     std::free(bdd);
 
-    if (--g_bdd_count == 0) {
+    bool should_free = false;
+    {
+        std::lock_guard<std::mutex> lock(g_nodes_mutex);
+        if (--g_bdd_count == 0) should_free = true;
+    }
+    if (should_free) {
         if (g_falseLeaf) { free_nodes_rec(g_falseLeaf); g_falseLeaf = nullptr; }
         if (g_trueLeaf)  { free_nodes_rec(g_trueLeaf);  g_trueLeaf  = nullptr; }
     }
@@ -114,7 +127,10 @@ OBDDNode* obdd_constant(int value)
         g_falseLeaf->lowChild  = nullptr;
         g_falseLeaf->highChild = nullptr;
         g_falseLeaf->refCount  = 1;
-        g_all_nodes.insert(g_falseLeaf);
+        {
+            std::lock_guard<std::mutex> lock(g_nodes_mutex);
+            g_all_nodes.insert(g_falseLeaf);
+        }
     }
     if (!g_trueLeaf) {
         g_trueLeaf = static_cast<OBDDNode*>(xmalloc(sizeof(OBDDNode)));
@@ -123,7 +139,10 @@ OBDDNode* obdd_constant(int value)
         g_trueLeaf->lowChild  = reinterpret_cast<OBDDNode*>(0x1);
         g_trueLeaf->highChild = reinterpret_cast<OBDDNode*>(0x1);
         g_trueLeaf->refCount  = 1;
-        g_all_nodes.insert(g_trueLeaf);
+        {
+            std::lock_guard<std::mutex> lock(g_nodes_mutex);
+            g_all_nodes.insert(g_trueLeaf);
+        }
     }
     return value ? g_trueLeaf : g_falseLeaf;
 }
@@ -137,7 +156,10 @@ OBDDNode* obdd_node_create(int varIndex, OBDDNode* low, OBDDNode* high)
     n->refCount  = 1;
     if (low)  ++low->refCount;
     if (high) ++high->refCount;
-    g_all_nodes.insert(n);
+    {
+        std::lock_guard<std::mutex> lock(g_nodes_mutex);
+        g_all_nodes.insert(n);
+    }
     return n;
 }
 
@@ -348,5 +370,6 @@ OBDDNode* build_demo_bdd(const int* varOrder, int numVars)
 
 extern "C" size_t obdd_nodes_tracked()
 {
+    std::lock_guard<std::mutex> lock(g_nodes_mutex);
     return g_all_nodes.size();
 }
