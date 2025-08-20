@@ -272,9 +272,12 @@ static OBDDNode* rebuild_host_bdd(const std::vector<NodeGPU>& nodes,
                                   int idx,
                                   std::vector<OBDDNode*>& cache)
 {
-    if (idx == 0) return obdd_constant(0);
+    /* Indici fuori range o negativi ⇒ foglia 0 per sicurezza */
+    if (idx <= 0 || idx >= static_cast<int>(nodes.size()))
+        return obdd_constant(0);
     if (idx == 1) return obdd_constant(1);
     if (cache[idx]) return cache[idx];
+
     const NodeGPU& n = nodes[idx];
     OBDDNode* low  = rebuild_host_bdd(nodes, n.low,  cache);
     OBDDNode* high = rebuild_host_bdd(nodes, n.high, cache);
@@ -298,16 +301,22 @@ static void reduce_device_obdd(void** dHandle)
     CUDA_CHECK(cudaFree(*dHandle));
 
     std::vector<OBDDNode*> cache(dev.size, nullptr);
-    int rootIdx = (dev.size > 2) ? 2 : 0;
+    int rootIdx = (dev.size > 2) ? 2 : (dev.size > 1 ? 1 : 0);
     OBDDNode* root = rebuild_host_bdd(nodes, rootIdx, cache);
     OBDDNode* reduced = obdd_reduce(root);
 
-    OBDD tmpUn{root, dev.nVars, static_cast<int*>(std::malloc(sizeof(int)*dev.nVars))};
-    obdd_destroy(&tmpUn);
+    /* usa obdd_create/destroy per mantenere corretto il contatore globale */
+    std::vector<int> order(dev.nVars);
+    for (int i = 0; i < dev.nVars; ++i) order[i] = i;
 
-    OBDD tmpRed{reduced, dev.nVars, static_cast<int*>(std::malloc(sizeof(int)*dev.nVars))};
-    DeviceOBDD* newDev = copy_flat_to_device(&tmpRed);
-    obdd_destroy(&tmpRed);
+    OBDD* tmpUn = obdd_create(dev.nVars, order.data());
+    tmpUn->root = root;
+    obdd_destroy(tmpUn);
+
+    OBDD* tmpRed = obdd_create(dev.nVars, order.data());
+    tmpRed->root = reduced;
+    DeviceOBDD* newDev = copy_flat_to_device(tmpRed);
+    obdd_destroy(tmpRed);
 
     *dHandle = static_cast<void*>(newDev);
 }
