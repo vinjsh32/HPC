@@ -60,14 +60,14 @@ static std::unordered_set<OBDDNode*> g_all_nodes;
 /* numero di BDD attivi, usato per sapere quando liberare le foglie */
 static int g_bdd_count = 0;
 
-static void free_nodes_rec(OBDDNode* node,
-                           std::unordered_set<OBDDNode*>& visited)
+static void free_nodes_rec(OBDDNode* node)
 {
-    if (!node || visited.count(node)) return;
-    if (node == g_falseLeaf || node == g_trueLeaf) return;
-    visited.insert(node);
-    free_nodes_rec(node->lowChild, visited);
-    free_nodes_rec(node->highChild, visited);
+    if (!node) return;
+    if (--node->refCount > 0) return;
+    if (node->varIndex >= 0) {
+        free_nodes_rec(node->lowChild);
+        free_nodes_rec(node->highChild);
+    }
     g_all_nodes.erase(node);
     std::free(node);
 }
@@ -94,15 +94,14 @@ void obdd_destroy(OBDD* bdd)
 {
     if (!bdd) return;
 
-    std::unordered_set<OBDDNode*> visited;
-    free_nodes_rec(bdd->root, visited);
+    free_nodes_rec(bdd->root);
 
     std::free(bdd->varOrder);
     std::free(bdd);
 
     if (--g_bdd_count == 0) {
-        if (g_falseLeaf) { g_all_nodes.erase(g_falseLeaf); std::free(g_falseLeaf); g_falseLeaf = nullptr; }
-        if (g_trueLeaf)  { g_all_nodes.erase(g_trueLeaf);  std::free(g_trueLeaf);  g_trueLeaf  = nullptr; }
+        if (g_falseLeaf) { free_nodes_rec(g_falseLeaf); g_falseLeaf = nullptr; }
+        if (g_trueLeaf)  { free_nodes_rec(g_trueLeaf);  g_trueLeaf  = nullptr; }
     }
 }
 
@@ -114,6 +113,7 @@ OBDDNode* obdd_constant(int value)
         g_falseLeaf->varIndex  = -1;
         g_falseLeaf->lowChild  = nullptr;
         g_falseLeaf->highChild = nullptr;
+        g_falseLeaf->refCount  = 1;
         g_all_nodes.insert(g_falseLeaf);
     }
     if (!g_trueLeaf) {
@@ -122,6 +122,7 @@ OBDDNode* obdd_constant(int value)
         /* puntatori qualunque != nullptr per riconoscere la foglia */
         g_trueLeaf->lowChild  = reinterpret_cast<OBDDNode*>(0x1);
         g_trueLeaf->highChild = reinterpret_cast<OBDDNode*>(0x1);
+        g_trueLeaf->refCount  = 1;
         g_all_nodes.insert(g_trueLeaf);
     }
     return value ? g_trueLeaf : g_falseLeaf;
@@ -133,6 +134,9 @@ OBDDNode* obdd_node_create(int varIndex, OBDDNode* low, OBDDNode* high)
     n->varIndex  = varIndex;
     n->lowChild  = low;
     n->highChild = high;
+    n->refCount  = 1;
+    if (low)  ++low->refCount;
+    if (high) ++high->refCount;
     g_all_nodes.insert(n);
     return n;
 }

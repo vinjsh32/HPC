@@ -41,6 +41,7 @@ typedef struct OBDDNode {
     int             varIndex;   /* indice della variabile, -1 leaf */
     struct OBDDNode *highChild; /* branch "1" */
     struct OBDDNode *lowChild;  /* branch "0" */
+    int             refCount;   /* reference count */
 } OBDDNode;
 
 /**
