@@ -267,13 +267,20 @@ OBDDNode* obdd_apply(const OBDD* bdd1, const OBDD* bdd2, OBDD_Op opType)
 
 /* --------------------------- reduce ------------------------- */
 
-static OBDDNode* reduce_rec(OBDDNode* root)
+static OBDDNode* reduce_rec(OBDDNode* root, std::unordered_set<OBDDNode*>& visited)
 {
-    if (root->varIndex < 0) return root;
+    if (!root || root->varIndex < 0) return root;
+    
+    /* Controllo per cicli - se già visitato ritorna il nodo as-is */
+    if (visited.count(root)) {
+        return root;
+    }
+    visited.insert(root);
 
-    OBDDNode* l = reduce_rec(root->lowChild);
-    OBDDNode* h = reduce_rec(root->highChild);
-
+    OBDDNode* l = reduce_rec(root->lowChild, visited);
+    OBDDNode* h = reduce_rec(root->highChild, visited);
+    
+    visited.erase(root); /* Rimuove dal set visitati dopo la ricorsione */
     return unique_table_get_or_create(root->varIndex, l, h);
 }
 
@@ -281,7 +288,8 @@ OBDDNode* obdd_reduce(OBDDNode* root)
 {
     if (!root) return nullptr;
     unique_table_clear();
-    return reduce_rec(root);
+    std::unordered_set<OBDDNode*> visited;
+    return reduce_rec(root, visited);
 }
 
 /* ----------------------- reorder_sifting -------------------- */

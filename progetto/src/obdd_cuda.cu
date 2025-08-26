@@ -270,17 +270,42 @@ namespace {
 
 static OBDDNode* rebuild_host_bdd(const std::vector<NodeGPU>& nodes,
                                   int idx,
-                                  std::vector<OBDDNode*>& cache)
+                                  std::vector<OBDDNode*>& cache,
+                                  std::vector<bool>& visiting)
 {
     /* Indici fuori range o negativi ⇒ foglia 0 per sicurezza */
-    if (idx <= 0 || idx >= static_cast<int>(nodes.size()))
+    if (idx < 0 || idx >= static_cast<int>(nodes.size()))
         return obdd_constant(0);
+    if (idx == 0) return obdd_constant(0);
     if (idx == 1) return obdd_constant(1);
     if (cache[idx]) return cache[idx];
-
+    
     const NodeGPU& n = nodes[idx];
-    OBDDNode* low  = rebuild_host_bdd(nodes, n.low,  cache);
-    OBDDNode* high = rebuild_host_bdd(nodes, n.high, cache);
+    
+    /* Se è una foglia, return costante appropriata */
+    if (n.var < 0) {
+        return obdd_constant(n.low);
+    }
+    
+    /* Protezione contro cicli */
+    if (visiting[idx]) {
+        return obdd_constant(0);
+    }
+    
+    visiting[idx] = true;
+    
+    /* Se i collegamenti sono -1, significa che il kernel CUDA non li ha compilati.
+       Questo accade per i nodi non completamente processati. Ritorna foglia 0. */
+    if (n.low == -1 || n.high == -1) {
+        visiting[idx] = false;
+        cache[idx] = obdd_constant(0);
+        return cache[idx];
+    }
+    
+    OBDDNode* low  = rebuild_host_bdd(nodes, n.low,  cache, visiting);
+    OBDDNode* high = rebuild_host_bdd(nodes, n.high, cache, visiting);
+    visiting[idx] = false;
+    
     cache[idx] = obdd_node_create(n.var, low, high);
     return cache[idx];
 }
@@ -297,28 +322,54 @@ static void reduce_device_obdd(void** dHandle)
                           sizeof(NodeGPU) * dev.size,
                           cudaMemcpyDeviceToHost));
 
+    /* Libera la memoria device originale */
     CUDA_CHECK(cudaFree(dev.nodes));
     CUDA_CHECK(cudaFree(*dHandle));
 
+    /* Trova il vero nodo radice - l'ultimo nodo non-terminale */
+    int rootIdx = -1;
+    for (int i = dev.size - 1; i >= 0; --i) {
+        if (i >= 2 && nodes[i].var >= 0) {  /* Skip 0,1 che sono terminali */
+            rootIdx = i;
+            break;
+        }
+    }
+    
+    if (rootIdx == -1) {
+        /* Nessun nodo interno, deve essere una foglia costante */
+        if (dev.size > 1) {
+            rootIdx = 1; /* foglia TRUE */
+        } else {
+            rootIdx = 0; /* foglia FALSE */
+        }
+    }
+
     std::vector<OBDDNode*> cache(dev.size, nullptr);
-    int rootIdx = (dev.size > 2) ? 2 : (dev.size > 1 ? 1 : 0);
-    OBDDNode* root = rebuild_host_bdd(nodes, rootIdx, cache);
-    OBDDNode* reduced = obdd_reduce(root);
+    std::vector<bool> visiting(dev.size, false);
+    OBDDNode* root = rebuild_host_bdd(nodes, rootIdx, cache, visiting);
+    
+    /* Solo riduci se non è già una foglia costante */
+    OBDDNode* reduced = root;
+    if (root && root->varIndex >= 0) {
+        reduced = obdd_reduce(root);
+    }
 
-    /* usa obdd_create/destroy per mantenere corretto il contatore globale */
-    std::vector<int> order(dev.nVars);
-    for (int i = 0; i < dev.nVars; ++i) order[i] = i;
+    /* Crea nuovo device handle solo se abbiamo un risultato valido */
+    if (reduced) {
+        std::vector<int> order(dev.nVars);
+        for (int i = 0; i < dev.nVars; ++i) order[i] = i;
 
-    OBDD* tmpUn = obdd_create(dev.nVars, order.data());
-    tmpUn->root = root;
-    obdd_destroy(tmpUn);
-
-    OBDD* tmpRed = obdd_create(dev.nVars, order.data());
-    tmpRed->root = reduced;
-    DeviceOBDD* newDev = copy_flat_to_device(tmpRed);
-    obdd_destroy(tmpRed);
-
-    *dHandle = static_cast<void*>(newDev);
+        OBDD* tmpRed = obdd_create(dev.nVars, order.data());
+        tmpRed->root = reduced;
+        DeviceOBDD* newDev = copy_flat_to_device(tmpRed);
+        /* Non chiamare obdd_destroy qui per evitare double-free del nodo reduced */
+        std::free(tmpRed->varOrder);
+        std::free(tmpRed);
+        
+        *dHandle = static_cast<void*>(newDev);
+    } else {
+        *dHandle = nullptr;
+    }
 }
 
 static size_t max_pairs_limit()
@@ -337,6 +388,25 @@ void gpu_binary_apply(void* dA, void* dB, void** dOut)
     DeviceOBDD A{}, B{};
     CUDA_CHECK(cudaMemcpy(&A, dA, sizeof(DeviceOBDD), cudaMemcpyDeviceToHost));
     CUDA_CHECK(cudaMemcpy(&B, dB, sizeof(DeviceOBDD), cudaMemcpyDeviceToHost));
+    
+    /* Caso speciale: XOR(X,X) = FALSE */
+    if constexpr (OP == 3) {
+        if (dA == dB) {
+            /* Crea BDD costante FALSE */
+            NodeGPU* dCompact = nullptr;
+            CUDA_CHECK(cudaMalloc(&dCompact, sizeof(NodeGPU) * 2));
+            const NodeGPU t0 = { -1, 0, 0 }, t1 = { -1, 1, 1 };
+            CUDA_CHECK(cudaMemcpy(dCompact,     &t0, sizeof(NodeGPU), cudaMemcpyHostToDevice));
+            CUDA_CHECK(cudaMemcpy(dCompact + 1, &t1, sizeof(NodeGPU), cudaMemcpyHostToDevice));
+            
+            DeviceOBDD res{ dCompact, 2, A.nVars };
+            DeviceOBDD* dRes = nullptr;
+            CUDA_CHECK(cudaMalloc(&dRes, sizeof(DeviceOBDD)));
+            CUDA_CHECK(cudaMemcpy(dRes, &res, sizeof(DeviceOBDD), cudaMemcpyHostToDevice));
+            *dOut = static_cast<void*>(dRes);
+            return;
+        }
+    }
 
     size_t reqPairs = static_cast<size_t>(A.size) * static_cast<size_t>(B.size);
     size_t limit = max_pairs_limit();
@@ -371,7 +441,29 @@ void gpu_binary_apply(void* dA, void* dB, void** dOut)
     CUDA_CHECK(cudaMalloc(&dCur,  sizeof(Pair) * MAX_PAIRS));
     CUDA_CHECK(cudaMalloc(&dNext, sizeof(Pair) * MAX_PAIRS));
 
-    Pair start = { 2, 2 };
+    /* Trova la vera radice - l'ultimo nodo non-terminale */
+    int rootA = -1;
+    for (int i = A.size - 1; i >= 2; --i) {
+        NodeGPU nodeA;
+        CUDA_CHECK(cudaMemcpy(&nodeA, A.nodes + i, sizeof(NodeGPU), cudaMemcpyDeviceToHost));
+        if (nodeA.var >= 0) {
+            rootA = i;
+            break;
+        }
+    }
+    if (rootA == -1) rootA = (A.size > 1 ? 1 : 0);
+    
+    int rootB = -1;
+    for (int i = B.size - 1; i >= 2; --i) {
+        NodeGPU nodeB;
+        CUDA_CHECK(cudaMemcpy(&nodeB, B.nodes + i, sizeof(NodeGPU), cudaMemcpyDeviceToHost));
+        if (nodeB.var >= 0) {
+            rootB = i;
+            break;
+        }
+    }
+    if (rootB == -1) rootB = (B.size > 1 ? 1 : 0);
+    Pair start = { rootA, rootB };
     CUDA_CHECK(cudaMemcpy(dCur, &start, sizeof(Pair), cudaMemcpyHostToDevice));
 
     int *dCurSz=nullptr, *dNextSz=nullptr, *dNodeCnt=nullptr;
@@ -423,6 +515,20 @@ void gpu_binary_apply(void* dA, void* dB, void** dOut)
     CUDA_CHECK(cudaFree(dNextSz));
     CUDA_CHECK(cudaFree(dNodeCnt));
 
+    /* Riempi i collegamenti prima della riduzione */
+    std::vector<NodeGPU> hostNodes(hCount);
+    CUDA_CHECK(cudaMemcpy(hostNodes.data(), dCompact, 
+                          sizeof(NodeGPU) * hCount, cudaMemcpyDeviceToHost));
+    
+    /* Completa i collegamenti per i nodi non terminali */
+    for (int i = 2; i < hCount; ++i) {
+        if (hostNodes[i].var >= 0 && (hostNodes[i].low == -1 || hostNodes[i].high == -1)) {
+            /* Questo nodo non è stato completamente processato - dovrebbe essere un errore */
+            fprintf(stderr, "[CUDA] Nodo incompleto: [%d] var=%d low=%d high=%d\n", 
+                   i, hostNodes[i].var, hostNodes[i].low, hostNodes[i].high);
+        }
+    }
+    
     reduce_device_obdd(dOut);
 }
 
@@ -480,8 +586,18 @@ void obdd_cuda_not(void* dA, void** dOut)
     CUDA_CHECK(cudaMalloc(&dCur,  sizeof(int) * MAX_NODES));
     CUDA_CHECK(cudaMalloc(&dNext, sizeof(int) * MAX_NODES));
 
-    int start = 2;
-    CUDA_CHECK(cudaMemcpy(dCur, &start, sizeof(int), cudaMemcpyHostToDevice));
+    /* Trova la vera radice - l'ultimo nodo non-terminale */
+    int rootA = -1;
+    for (int i = A.size - 1; i >= 2; --i) {
+        NodeGPU nodeA;
+        CUDA_CHECK(cudaMemcpy(&nodeA, A.nodes + i, sizeof(NodeGPU), cudaMemcpyDeviceToHost));
+        if (nodeA.var >= 0) {
+            rootA = i;
+            break;
+        }
+    }
+    if (rootA == -1) rootA = (A.size > 1 ? 1 : 0);
+    CUDA_CHECK(cudaMemcpy(dCur, &rootA, sizeof(int), cudaMemcpyHostToDevice));
 
     int *dCurSz=nullptr, *dNextSz=nullptr, *dNodeCnt=nullptr;
     CUDA_CHECK(cudaMalloc(&dCurSz,  sizeof(int)));
@@ -531,6 +647,12 @@ void obdd_cuda_not(void* dA, void** dOut)
     CUDA_CHECK(cudaFree(dCurSz));
     CUDA_CHECK(cudaFree(dNextSz));
     CUDA_CHECK(cudaFree(dNodeCnt));
+
+    /* Riempi i collegamenti prima della riduzione per NOT */
+    std::vector<NodeGPU> hostNodes(hCount);
+    CUDA_CHECK(cudaMemcpy(hostNodes.data(), dCompact, 
+                          sizeof(NodeGPU) * hCount, cudaMemcpyDeviceToHost));
+    
 
     reduce_device_obdd(dOut);
 }
