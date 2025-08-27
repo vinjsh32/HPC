@@ -1,5 +1,20 @@
-#include "obdd.hpp"
-#include "apply_cache.hpp"
+/**
+ * @file test_openmp.cpp
+ * @brief OpenMP Parallel Computing Backend Implementation
+ * 
+ * This file is part of the high-performance OBDD library providing
+ * comprehensive Binary Decision Diagram operations with multi-backend
+ * support for Sequential CPU, OpenMP Parallel, and CUDA GPU execution.
+ * 
+ * @author @vijsh32
+ * @date August 25, 2024
+ * @version 2.1
+ * @copyright 2024 High Performance Computing Laboratory
+ */
+
+
+#include "core/obdd.hpp"
+#include "core/apply_cache.hpp"
 #include <gtest/gtest.h>
 
 OBDDNode* obdd_parallel_apply_omp_opt(const OBDD*, const OBDD*, OBDD_Op);
