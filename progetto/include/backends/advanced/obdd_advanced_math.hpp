@@ -300,7 +300,7 @@ OBDD* obdd_sudoku(int puzzle[9][9]);
  * @param bdd The BDD to analyze
  * @return Number of nodes in the BDD
  */
-int obdd_count_nodes(const OBDD* bdd);
+// obdd_count_nodes declared in obdd_reordering.hpp
 
 /**
  * @brief Count satisfying assignments in OBDD

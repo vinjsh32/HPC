@@ -7,7 +7,7 @@
 #include "core/obdd.hpp"
 
 #ifdef OBDD_ENABLE_CUDA
-#include "obdd_cuda_optimized.cuh"
+#include "cuda/obdd_cuda_optimized.cuh"
 #include <cuda_runtime.h>
 #include <chrono>
 #include <vector>

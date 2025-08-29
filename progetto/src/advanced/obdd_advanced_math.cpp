@@ -4,6 +4,7 @@
  */
 
 #include "advanced/obdd_advanced_math.hpp"
+#include "advanced/obdd_reordering.hpp"  
 #include "core/obdd.hpp"
 #include <algorithm>
 #include <cmath>

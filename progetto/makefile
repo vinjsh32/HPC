@@ -105,13 +105,15 @@ CPU_OBJS := \
   $(OBJ_DIR)/obdd_advanced_math.o \
   $(OBJ_DIR)/performance_benchmark.o \
   $(OBJ_DIR)/realistic_problems.o \
-  $(OBJ_DIR)/statistical_analysis.o
+  $(OBJ_DIR)/statistical_analysis.o \
+  $(OBJ_DIR)/obdd_memory_manager.o
 
 # OpenMP (opzionale)
 ifeq ($(OMP),1)
   OMP_OBJS := \
     $(OBJ_DIR)/obdd_openmp.o \
-    $(OBJ_DIR)/obdd_openmp_optim.o
+    $(OBJ_DIR)/obdd_openmp_optim.o \
+    $(OBJ_DIR)/obdd_openmp_enhanced.o
 else
   OMP_OBJS :=
 endif
@@ -143,6 +145,7 @@ COMP_EXE     := $(BIN_DIR)/test_backend_comparison
 BENCH_EXE    := $(BIN_DIR)/test_performance_benchmark
 ADV_BENCH_EXE := $(BIN_DIR)/test_advanced_benchmark
 LARGE_SCALE_EXE := $(BIN_DIR)/test_large_scale_performance
+MEMORY_EXE := $(BIN_DIR)/test_memory_efficient
 
 # ------------------------ Target di default ----------------------
 ALL_EXE := $(SEQ_EXE)
@@ -275,6 +278,11 @@ $(ADV_BENCH_EXE): $(CPU_OBJS) $(OMP_OBJS) $(CUDA_OBJS) $(OBJ_DIR)/test_advanced_
 $(LARGE_SCALE_EXE): $(CPU_OBJS) $(OMP_OBJS) $(CUDA_OBJS) $(OBJ_DIR)/test_large_scale_performance.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
+# Large BDD Performance Tests (Enhanced)
+LARGE_BDD_EXE := $(BIN_DIR)/test_large_bdd_performance
+$(LARGE_BDD_EXE): $(CPU_OBJS) $(OMP_OBJS) $(CUDA_OBJS) $(OBJ_DIR)/test_large_bdd_performance.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
+
 # Run extended tests
 .PHONY: run-omp-ext run-cuda-ext run-comparison run-extended run-benchmark run-advanced
 
@@ -299,6 +307,72 @@ run-advanced: $(ADV_BENCH_EXE)
 
 run-large-scale: $(LARGE_SCALE_EXE)
 	@echo "🔬 Running LARGE-SCALE OpenMP vs Sequential crossover analysis..."
+	$<
+
+run-large-bdd: $(LARGE_BDD_EXE)
+	@echo "🎯 Running LARGE BDD performance tests to demonstrate OpenMP superiority..."
+	$<
+
+# Massive Scale Gradual Tests (100-10000 variables)
+MASSIVE_SCALE_EXE := $(BIN_DIR)/test_massive_scale_gradual
+$(MASSIVE_SCALE_EXE): $(CPU_OBJS) $(OMP_OBJS) $(CUDA_OBJS) $(OBJ_DIR)/test_massive_scale_gradual.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
+
+run-massive-scale: $(MASSIVE_SCALE_EXE)
+	@echo "🔥 Running MASSIVE SCALE gradual tests (100-10000 variables)..."
+	@echo "⚠️ Warning: This test may take up to 5 hours depending on hardware"
+	@echo "Early stopping enabled if any test exceeds 5 minutes"
+	$<
+
+# Memory-Efficient Tests for Large Scale (optimized for 32GB systems)
+$(MEMORY_EXE): $(CPU_OBJS) $(OMP_OBJS) $(CUDA_OBJS) $(OBJ_DIR)/test_memory_efficient.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
+
+run-memory-efficient: $(MEMORY_EXE)
+	@echo "💾 Running MEMORY-EFFICIENT large scale tests..."
+	@echo "🔧 Optimized for 32GB systems using streaming and progressive building"
+	$<
+
+# Performance Comparison Test (clean comparison across backends)
+PERF_COMP_EXE := $(BIN_DIR)/test_performance_comparison
+$(PERF_COMP_EXE): $(CPU_OBJS) $(OMP_OBJS) $(CUDA_OBJS) $(OBJ_DIR)/test_performance_comparison.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
+
+run-perf-comparison: $(PERF_COMP_EXE)
+	@echo "⚡ Running BACKEND PERFORMANCE COMPARISON..."
+	@echo "🔍 Sequential vs OpenMP vs CUDA across different problem scales"
+	$<
+
+# Conservative Memory Test (safe validation)
+MEMORY_CONS_EXE := $(BIN_DIR)/test_memory_conservative
+$(MEMORY_CONS_EXE): $(CPU_OBJS) $(OMP_OBJS) $(CUDA_OBJS) $(OBJ_DIR)/test_memory_conservative.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
+
+run-memory-conservative: $(MEMORY_CONS_EXE)
+	@echo "🔒 Running CONSERVATIVE MEMORY tests..."
+	@echo "🧪 Safe validation of memory management functionality"
+	$<
+
+# Ultra Large Scale Test (10K-100K variables)
+ULTRA_SCALE_EXE := $(BIN_DIR)/test_ultra_large_scale
+$(ULTRA_SCALE_EXE): $(CPU_OBJS) $(OMP_OBJS) $(CUDA_OBJS) $(OBJ_DIR)/test_ultra_large_scale.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
+
+run-ultra-scale: $(ULTRA_SCALE_EXE)
+	@echo "🔥 Running ULTRA-LARGE SCALE tests (10K-100K variables)..."
+	@echo "⚠️ WARNING: This may consume significant system resources"
+	@echo "🛡️ Early termination enabled to prevent system crashes"
+	$<
+
+# Full Scale Timing Test (1K-100K with all backends)
+FULL_TIMING_EXE := $(BIN_DIR)/test_full_scale_timing
+$(FULL_TIMING_EXE): $(CPU_OBJS) $(OMP_OBJS) $(CUDA_OBJS) $(OBJ_DIR)/test_full_scale_timing.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
+
+run-full-timing: $(FULL_TIMING_EXE)
+	@echo "⚡ Running FULL-SCALE TIMING benchmark (1K-100K variables)..."
+	@echo "📊 Sequential vs OpenMP vs CUDA comprehensive comparison"
+	@echo "📈 Results will be saved to full_scale_timing_results.csv"
 	$<
 
 # ------------------------ Pulizia -------------------------------

@@ -180,6 +180,9 @@ OBDDNode   *obdd_parallel_xor_omp(const OBDD *bdd1, const OBDD *bdd2);
 OBDDNode   *obdd_parallel_apply_omp(const OBDD *bdd1,
                                     const OBDD *bdd2,
                                     OBDD_Op     op);
+OBDDNode   *obdd_parallel_apply_omp_enhanced(const OBDD *bdd1,
+                                             const OBDD *bdd2,
+                                             OBDD_Op     op);
 #endif /* OBDD_ENABLE_OPENMP */
 
 /* =====================================================

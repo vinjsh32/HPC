@@ -48,9 +48,9 @@
 #include <cassert>
 
 static inline int compute_task_cutoff() {
-    // Increased cutoff to reduce task overhead - only parallelize deeper recursions
+    // More aggressive parallelization for better performance
     int threads = omp_get_max_threads();
-    return std::max(6, static_cast<int>(std::log2(threads)) + 4);
+    return std::max(2, static_cast<int>(std::log2(threads)) + 1);
 }
 
 /* --------------------------------------------------------------------------
@@ -87,7 +87,7 @@ static OBDDNode* obdd_parallel_apply_sections(const OBDDNode* n1,
     OBDDNode *lowRes = nullptr, *highRes = nullptr;
 
     // Use sections for better performance on binary splits
-    if (depth < 4) { // Only parallelize top levels
+    if (depth < 8) { // Deeper parallelization for better performance
         #pragma omp parallel sections
         {
             #pragma omp section
