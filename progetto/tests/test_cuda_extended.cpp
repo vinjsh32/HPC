@@ -12,7 +12,7 @@
 
 #ifdef OBDD_ENABLE_CUDA
 #include <cuda_runtime.h>
-#include "obdd_cuda_types.cuh"
+#include "cuda/obdd_cuda_types.cuh"
 
 class CUDAExtendedTest : public ::testing::Test {
 protected:

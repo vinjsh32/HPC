@@ -11,7 +11,7 @@
 
 #ifdef OBDD_ENABLE_CUDA
 #include "cuda/obdd_cuda.hpp"
-#include "obdd_cuda_types.cuh"
+#include "cuda/obdd_cuda_types.cuh"
 #include <cuda_runtime.h>
 #endif
 

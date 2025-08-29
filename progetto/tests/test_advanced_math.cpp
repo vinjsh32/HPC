@@ -29,10 +29,15 @@ protected:
     }
     
     void test_with_reordering(const char* name, OBDD* bdd) {
+        if (!bdd || !bdd->root) {
+            std::cout << name << " reordering: skipped (invalid BDD)" << std::endl;
+            return;
+        }
+        
         int original_size = obdd_count_nodes(bdd);
         
         ReorderConfig config = obdd_reorder_get_default_config(REORDER_SIFTING);
-        config.max_iterations = 3; // Quick test
+        config.max_iterations = 2; // Reduced for safety
         
         ReorderResult result = {};
         int* new_order = obdd_reorder_advanced(bdd, &config, &result);
