@@ -1,0 +1,246 @@
+{
+  "metadata": {
+    "generated": "2025-08-31T12:10:38.366487",
+    "total_tests": 24,
+    "backends": [
+      "Sequential",
+      "OpenMP",
+      "CUDA"
+    ]
+  },
+  "performance_analysis": {
+    "total_tests": 24,
+    "backends": [
+      "Sequential",
+      "OpenMP",
+      "CUDA"
+    ],
+    "operations": [
+      "apply_ops",
+      "ultra_large",
+      "advanced_math",
+      "large",
+      "reordering",
+      "complex_scale",
+      "optimized",
+      "basic",
+      "scalability",
+      "medium_ops",
+      "apply",
+      "math_ops",
+      "gpu",
+      "basic_ops",
+      "parallel"
+    ],
+    "variable_range": [
+      8,
+      24
+    ],
+    "backend_stats": {
+      "Sequential": {
+        "avg_time_ms": 42.55555555555556,
+        "min_time_ms": 25.0,
+        "max_time_ms": 60.0,
+        "avg_memory_mb": 0.0,
+        "success_rate": 1.0
+      },
+      "OpenMP": {
+        "avg_time_ms": 54.0,
+        "min_time_ms": 45.0,
+        "max_time_ms": 68.0,
+        "avg_memory_mb": 0.0,
+        "success_rate": 0.75
+      },
+      "CUDA": {
+        "avg_time_ms": 220.85714285714286,
+        "min_time_ms": 206.0,
+        "max_time_ms": 239.0,
+        "avg_memory_mb": 0.0,
+        "success_rate": 1.0
+      }
+    },
+    "fastest_by_operation": {
+      "apply_ops": {
+        "backend": "OpenMP",
+        "time_ms": 58.0,
+        "variables": 10
+      },
+      "advanced_math": {
+        "backend": "Sequential",
+        "time_ms": 57.0,
+        "variables": 20
+      },
+      "large": {
+        "backend": "OpenMP",
+        "time_ms": 46.0,
+        "variables": 12
+      },
+      "reordering": {
+        "backend": "Sequential",
+        "time_ms": 35.0,
+        "variables": 16
+      },
+      "optimized": {
+        "backend": "CUDA",
+        "time_ms": 206.0,
+        "variables": 12
+      },
+      "basic": {
+        "backend": "Sequential",
+        "time_ms": 35.0,
+        "variables": 8
+      },
+      "scalability": {
+        "backend": "Sequential",
+        "time_ms": 35.0,
+        "variables": 14
+      },
+      "medium_ops": {
+        "backend": "OpenMP",
+        "time_ms": 52.0,
+        "variables": 12
+      },
+      "apply": {
+        "backend": "Sequential",
+        "time_ms": 25.0,
+        "variables": 10
+      },
+      "math_ops": {
+        "backend": "OpenMP",
+        "time_ms": 68.0,
+        "variables": 16
+      },
+      "gpu": {
+        "backend": "CUDA",
+        "time_ms": 238.0,
+        "variables": 10
+      },
+      "basic_ops": {
+        "backend": "OpenMP",
+        "time_ms": 45.0,
+        "variables": 8
+      },
+      "parallel": {
+        "backend": "OpenMP",
+        "time_ms": 55.0,
+        "variables": 10
+      }
+    }
+  },
+  "correctness_analysis": {
+    "message": "No correctness data available"
+  },
+  "raw_performance_data": [
+    {
+      "Backend": "Sequential",
+      "TestType": "basic",
+      "BDDSize": "small",
+      "Variables": 8,
+      "Time_ms": 35.0,
+      "Memory_MB": 0.0,
+      "Operations_per_sec": 0.0,
+      "Nodes_per_sec": "0",
+      "Success": "SUCCESS"
+    },
+    {
+      "Backend": "Sequential",
+      "TestType": "apply",
+      "BDDSize": "medium",
+      "Variables": 10,
+      "Time_ms": 25.0,
+      "Memory_MB": 0.0,
+      "Operations_per_sec": 0.0,
+      "Nodes_per_sec": "0",
+      "Success": "SUCCESS"
+    },
+    {
+      "Backend": "OpenMP",
+      "TestType": "parallel",
+      "BDDSize": "medium",
+      "Variables": 10,
+      "Time_ms": 55.0,
+      "Memory_MB": 0.0,
+      "Operations_per_sec": 0.0,
+      "Nodes_per_sec": "0",
+      "Success": "SUCCESS"
+    },
+    {
+      "Backend": "OpenMP",
+      "TestType": "large",
+      "BDDSize": "large",
+      "Variables": 12,
+      "Time_ms": 46.0,
+      "Memory_MB": 0.0,
+      "Operations_per_sec": 0.0,
+      "Nodes_per_sec": "0",
+      "Success": "SUCCESS"
+    },
+    {
+      "Backend": "CUDA",
+      "TestType": "gpu",
+      "BDDSize": "medium",
+      "Variables": 10,
+      "Time_ms": 238.0,
+      "Memory_MB": 0.0,
+      "Operations_per_sec": 0.0,
+      "Nodes_per_sec": "0",
+      "Success": "SUCCESS"
+    },
+    {
+      "Backend": "CUDA",
+      "TestType": "optimized",
+      "BDDSize": "large",
+      "Variables": 12,
+      "Time_ms": 206.0,
+      "Memory_MB": 0.0,
+      "Operations_per_sec": 0.0,
+      "Nodes_per_sec": "0",
+      "Success": "SUCCESS"
+    },
+    {
+      "Backend": "Sequential",
+      "TestType": "reordering",
+      "BDDSize": "variable",
+      "Variables": 16,
+      "Time_ms": 35.0,
+      "Memory_MB": 0.0,
+      "Operations_per_sec": 0.0,
+      "Nodes_per_sec": "0",
+      "Success": "SUCCESS"
+    },
+    {
+      "Backend": "Sequential",
+      "TestType": "advanced_math",
+      "BDDSize": "complex",
+      "Variables": 20,
+      "Time_ms": 57.0,
+      "Memory_MB": 0.0,
+      "Operations_per_sec": 0.0,
+      "Nodes_per_sec": "0",
+      "Success": "SUCCESS"
+    },
+    {
+      "Backend": "Sequential",
+      "TestType": "scalability",
+      "BDDSize": "scale_8",
+      "Variables": 8,
+      "Time_ms": 49.0,
+      "Memory_MB": 0.0,
+      "Operations_per_sec": 0.0,
+      "Nodes_per_sec": "0",
+      "Success": "SUCCESS"
+    },
+    {
+      "Backend": "CUDA",
+      "TestType": "scalability",
+      "BDDSize": "scale_8",
+      "Variables": 8,
+      "Time_ms": 211.0,
+      "Memory_MB": 0.0,
+      "Operations_per_sec": 0.0,
+      "Nodes_per_sec": "0",
+      "Success": "SUCCESS"
+    }
+  ],
+  "raw_correctness_data": []
+}

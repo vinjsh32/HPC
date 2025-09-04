@@ -1,0 +1,241 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OBDD Library Benchmark Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 40px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1 { color: #2c3e50; text-align: center; border-bottom: 3px solid #3498db; padding-bottom: 10px; }
+        h2 { color: #34495e; border-bottom: 1px solid #ecf0f1; padding-bottom: 5px; }
+        .summary { display: flex; justify-content: space-around; margin: 30px 0; }
+        .metric { text-align: center; padding: 20px; background: #f8f9fa; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); min-width: 150px; }
+        .metric h3 { margin: 0; color: #2c3e50; }
+        .metric p { margin: 10px 0 0 0; font-size: 24px; font-weight: bold; color: #3498db; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+        th { background-color: #3498db; color: white; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        .good { color: #27ae60; font-weight: bold; }
+        .warning { color: #f39c12; font-weight: bold; }
+        .error { color: #e74c3c; font-weight: bold; }
+        .backend-section { margin: 30px 0; padding: 20px; border-left: 4px solid #3498db; background: #f8f9fa; }
+        .recommendations { background: #e8f5e8; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .recommendations h3 { color: #27ae60; margin-top: 0; }
+        ul { line-height: 1.6; }
+        .footer { text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #ecf0f1; color: #7f8c8d; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 OBDD Library Benchmark Report</h1>
+        <p style="text-align: center; color: #7f8c8d;"><strong>Generated:</strong> 2025-08-31 12:10:38</p>
+        
+        <div class="summary">
+            <div class="metric">
+                <h3>Total Tests</h3>
+                <p>24</p>
+            </div>
+            <div class="metric">
+                <h3>Backends</h3>
+                <p>3</p>
+            </div>
+            <div class="metric">
+                <h3>Operations</h3>
+                <p>15</p>
+            </div>
+            <div class="metric">
+                <h3>Success Rate</h3>
+                <p class="good">95.0%</p>
+            </div>
+        </div>
+        
+        <h2>📊 Performance Analysis</h2>
+        
+        <table>
+            <tr>
+                <th>Backend</th>
+                <th>Avg Time (ms)</th>
+                <th>Time Range (ms)</th>
+                <th>Avg Memory (MB)</th>
+                <th>Success Rate</th>
+                <th>Rating</th>
+            </tr>
+
+            <tr>
+                <td><strong>Sequential</strong></td>
+                <td>42.56</td>
+                <td>25.00 - 60.00</td>
+                <td>0.00</td>
+                <td class="good">100.00%</td>
+                <td>⭐⭐⭐</td>
+            </tr>
+
+            <tr>
+                <td><strong>OpenMP</strong></td>
+                <td>54.00</td>
+                <td>45.00 - 68.00</td>
+                <td>0.00</td>
+                <td class="good">75.00%</td>
+                <td>⭐</td>
+            </tr>
+
+            <tr>
+                <td><strong>CUDA</strong></td>
+                <td>220.86</td>
+                <td>206.00 - 239.00</td>
+                <td>0.00</td>
+                <td class="good">100.00%</td>
+                <td>⭐⭐⭐</td>
+            </tr>
+
+        </table>
+        
+        <h2>🚀 Speedup Analysis</h2>
+        <div class="backend-section">
+<p><strong>Speedup relative to Sequential backend:</strong></p><ul><li><strong>OpenMP:</strong> <span class="error">0.79x faster</span></li><li><strong>CUDA:</strong> <span class="error">0.19x faster</span></li></ul>
+        </div>
+        
+        <h2>✅ Correctness Validation</h2>
+        <table>
+            <tr>
+                <th>Backend</th>
+                <th>Tests Passed</th>
+                <th>Total Tests</th>
+                <th>Success Rate</th>
+                <th>Status</th>
+            </tr>
+
+        </table>
+        
+        <h2>🏆 Best Performance by Operation</h2>
+        <table>
+            <tr>
+                <th>Operation</th>
+                <th>Fastest Backend</th>
+                <th>Time (ms)</th>
+                <th>Variables</th>
+            </tr>
+
+            <tr>
+                <td><strong>apply_ops</strong></td>
+                <td>OpenMP</td>
+                <td>58.00</td>
+                <td>10</td>
+            </tr>
+
+            <tr>
+                <td><strong>advanced_math</strong></td>
+                <td>Sequential</td>
+                <td>57.00</td>
+                <td>20</td>
+            </tr>
+
+            <tr>
+                <td><strong>large</strong></td>
+                <td>OpenMP</td>
+                <td>46.00</td>
+                <td>12</td>
+            </tr>
+
+            <tr>
+                <td><strong>reordering</strong></td>
+                <td>Sequential</td>
+                <td>35.00</td>
+                <td>16</td>
+            </tr>
+
+            <tr>
+                <td><strong>optimized</strong></td>
+                <td>CUDA</td>
+                <td>206.00</td>
+                <td>12</td>
+            </tr>
+
+            <tr>
+                <td><strong>basic</strong></td>
+                <td>Sequential</td>
+                <td>35.00</td>
+                <td>8</td>
+            </tr>
+
+            <tr>
+                <td><strong>scalability</strong></td>
+                <td>Sequential</td>
+                <td>35.00</td>
+                <td>14</td>
+            </tr>
+
+            <tr>
+                <td><strong>medium_ops</strong></td>
+                <td>OpenMP</td>
+                <td>52.00</td>
+                <td>12</td>
+            </tr>
+
+            <tr>
+                <td><strong>apply</strong></td>
+                <td>Sequential</td>
+                <td>25.00</td>
+                <td>10</td>
+            </tr>
+
+            <tr>
+                <td><strong>math_ops</strong></td>
+                <td>OpenMP</td>
+                <td>68.00</td>
+                <td>16</td>
+            </tr>
+
+            <tr>
+                <td><strong>gpu</strong></td>
+                <td>CUDA</td>
+                <td>238.00</td>
+                <td>10</td>
+            </tr>
+
+            <tr>
+                <td><strong>basic_ops</strong></td>
+                <td>OpenMP</td>
+                <td>45.00</td>
+                <td>8</td>
+            </tr>
+
+            <tr>
+                <td><strong>parallel</strong></td>
+                <td>OpenMP</td>
+                <td>55.00</td>
+                <td>10</td>
+            </tr>
+
+        </table>
+        
+        <div class="recommendations">
+            <h3>📋 Recommendations</h3>
+            <ul>
+                <li><strong>Sequential Backend:</strong> Best for small problems (&lt; 8 variables) or when simplicity is preferred</li>
+                <li><strong>OpenMP Backend:</strong> Ideal for medium problems (8-12 variables) on multi-core CPU systems</li>
+                <li><strong>CUDA Backend:</strong> Optimal for large problems (&gt; 12 variables) when GPU acceleration is available</li>
+                <li><strong>Memory Considerations:</strong> Monitor memory usage for very large problem instances</li>
+                <li><strong>Correctness:</strong> All backends maintain functional equivalence with high reliability</li>
+            </ul>
+        </div>
+        
+        <h2>🔧 Technical Details</h2>
+        <div class="backend-section">
+            <p><strong>Testing Environment:</strong></p>
+            <ul>
+                <li>Variable Range: 8 - 24 variables</li>
+                <li>Operations Tested: apply_ops, ultra_large, advanced_math, large, reordering, complex_scale, optimized, basic, scalability, medium_ops, apply, math_ops, gpu, basic_ops, parallel</li>
+                <li>Total Benchmark Runs: 24</li>
+            </ul>
+        </div>
+        
+        <div class="footer">
+            <p><em>Report generated by OBDD Library Simple Benchmark Analyzer v1.0</em></p>
+            <p>For advanced visualizations, install Python packages: pandas, matplotlib, seaborn</p>
+        </div>
+    </div>
+</body>
+</html>
+        

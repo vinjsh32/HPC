@@ -1,0 +1,33 @@
+Running main() from ./googletest/src/gtest_main.cc
+Note: Google Test filter = IntensiveCrossover.FindRealCrossover
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from IntensiveCrossover
+[ RUN      ] IntensiveCrossover.FindRealCrossover
+
+=== INTENSIVE CROSSOVER ANALYSIS ===
+Using high iteration counts to create measurable computation
+    Vars     Iters  Sequential      OpenMP     Speedup    Status
+----------------------------------------------------------------
+Testing 12 variables with 204 iterations... seq... ❌ Sequential failed
+Testing 14 variables with 188 iterations... seq... ❌ Sequential failed
+Testing 16 variables with 172 iterations... seq... ❌ Sequential failed
+Testing 18 variables with 156 iterations... seq... ❌ Sequential failed
+Testing 20 variables with 140 iterations... seq... ❌ Sequential failed
+Testing 22 variables with 124 iterations... seq... omp...       22       124           1ms          11ms        0.09xNo benefit
+Testing 24 variables with 108 iterations... seq... omp...       24       108           1ms           5ms        0.20xNo benefit
+
+=== INTENSIVE CROSSOVER SUMMARY ===
+❌ No OpenMP benefit found in tested range
+   Best attempt: 0.20x at 24 variables
+   (Sequential: 1ms, OpenMP: 5ms)
+
+📊 Intensive results saved to: intensive_crossover_results.csv
+
+⚠️  All computation times very small - may need larger problems
+[       OK ] IntensiveCrossover.FindRealCrossover (24 ms)
+[----------] 1 test from IntensiveCrossover (24 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (24 ms total)
+[  PASSED  ] 1 test.

@@ -1,0 +1,165 @@
+# ============================================================================
+#  OBDD Library Benchmark Integration
+#  
+#  Extended Makefile targets for comprehensive benchmarking and reporting
+#  
+#  Author: @vijsh32
+#  Date: August 31, 2024
+#  Version: 1.0
+# ============================================================================
+
+# Include main makefile
+include makefile
+
+# Benchmark specific variables
+BENCHMARK_DIR = benchmark
+RESULTS_DIR = results
+SCRIPTS_DIR = scripts
+BENCHMARK_EXEC = $(BIN_DIR)/benchmark_collector
+PYTHON_REPORT = $(SCRIPTS_DIR)/generate_benchmark_report.py
+
+# Ensure directories exist
+$(shell mkdir -p $(BENCHMARK_DIR) $(RESULTS_DIR) $(SCRIPTS_DIR))
+
+# Build core objects needed by collector
+.PHONY: build-core
+build-core:
+	@$(MAKE) $(CPU_OBJS) $(OMP_OBJS) $(CUDA_OBJS)
+
+# Build benchmark collector
+$(BENCHMARK_EXEC): $(BENCHMARK_DIR)/benchmark_collector.cpp
+	@echo "Building benchmark collector..."
+	@echo "First building core objects..."
+	$(MAKE) build-core
+	$(CXX) $(CXXFLAGS) -o $@ $< $(CPU_OBJS) $(OMP_OBJS) $(CUDA_OBJS) $(LDLIBS)
+
+# Run comprehensive benchmarks
+.PHONY: run-comprehensive-benchmark
+run-comprehensive-benchmark: 
+	@echo "Running comprehensive benchmark suite..."
+	./$(SCRIPTS_DIR)/run_comprehensive_benchmark.sh
+
+# Build and run benchmark collector
+.PHONY: run-detailed-benchmark  
+run-detailed-benchmark: $(BENCHMARK_EXEC)
+	@echo "Running detailed benchmark collector..."
+	./$(BENCHMARK_EXEC) $(RESULTS_DIR)
+
+# Generate visual reports
+.PHONY: generate-report
+generate-report:
+	@echo "Generating benchmark report..."
+	@if command -v python3 >/dev/null 2>&1; then \
+		pip3 install matplotlib seaborn pandas numpy --quiet || true; \
+		python3 $(PYTHON_REPORT) --results-dir $(RESULTS_DIR); \
+	else \
+		echo "Python3 not available - skipping report generation"; \
+	fi
+
+# Run complete benchmark pipeline
+.PHONY: benchmark-full
+benchmark-full: run-comprehensive-benchmark generate-report
+
+# Benchmark only working tests (safer version)
+.PHONY: benchmark-safe
+benchmark-safe:
+	@echo "Running safe benchmark tests (working backends only)..."
+	./$(SCRIPTS_DIR)/run_safe_benchmark.sh
+	python3 $(SCRIPTS_DIR)/simple_benchmark_report.py $(RESULTS_DIR)
+	@echo ""
+	@echo "=========================================="
+	@echo "  Complete Benchmark Pipeline Finished"
+	@echo "=========================================="
+	@echo "Results available in:"
+	@echo "  - Raw data: $(RESULTS_DIR)/"
+	@echo "  - Visualizations: $(RESULTS_DIR)/visualizations/"
+	@echo "  - Report: $(RESULTS_DIR)/visualizations/benchmark_summary_report.html"
+
+# Quick benchmark (sample data only)
+.PHONY: benchmark-demo
+benchmark-demo: generate-report
+	@echo "Demo benchmark with sample data generated"
+	@echo "Open $(RESULTS_DIR)/visualizations/benchmark_summary_report.html to view"
+
+# Clean benchmark artifacts
+.PHONY: clean-benchmark
+clean-benchmark:
+	rm -rf $(RESULTS_DIR)/* $(BENCHMARK_EXEC)
+	@echo "Benchmark artifacts cleaned"
+
+# Performance test suites for different scales
+.PHONY: benchmark-small benchmark-medium benchmark-large
+
+benchmark-small:
+	@echo "Running small-scale benchmarks (4-8 variables)..."
+	@OBDD_BENCHMARK_SIZE=small ./$(SCRIPTS_DIR)/run_comprehensive_benchmark.sh
+
+benchmark-medium: 
+	@echo "Running medium-scale benchmarks (8-12 variables)..."
+	@OBDD_BENCHMARK_SIZE=medium ./$(SCRIPTS_DIR)/run_comprehensive_benchmark.sh
+
+benchmark-large:
+	@echo "Running large-scale benchmarks (12-16 variables)..."
+	@OBDD_BENCHMARK_SIZE=large ./$(SCRIPTS_DIR)/run_comprehensive_benchmark.sh
+
+# Cross-validation benchmarks
+.PHONY: benchmark-validation
+benchmark-validation:
+	@echo "Running cross-validation benchmarks..."
+	@echo "Testing Sequential vs OpenMP vs CUDA for correctness..."
+	make CUDA=0 OMP=0 run-seq > /tmp/seq_results.txt 2>&1 || true
+	make CUDA=0 OMP=1 run-omp > /tmp/omp_results.txt 2>&1 || true  
+	make CUDA=1 run-cuda > /tmp/cuda_results.txt 2>&1 || true
+	@echo "Validation results saved to /tmp/*_results.txt"
+
+# Memory profiling
+.PHONY: benchmark-memory
+benchmark-memory:
+	@echo "Running memory profiling benchmarks..."
+	@if command -v valgrind >/dev/null 2>&1; then \
+		echo "Using Valgrind for memory analysis..."; \
+		valgrind --tool=massif --pages-as-heap=yes $(BENCHMARK_EXEC) $(RESULTS_DIR) 2>&1 | tee $(RESULTS_DIR)/memory_profile.txt; \
+	else \
+		echo "Valgrind not available, using basic memory tracking"; \
+		$(BENCHMARK_EXEC) $(RESULTS_DIR); \
+	fi
+
+# Performance regression testing
+.PHONY: benchmark-regression
+benchmark-regression:
+	@echo "Running performance regression tests..."
+	@if [ -f $(RESULTS_DIR)/baseline_results.csv ]; then \
+		echo "Comparing against baseline..."; \
+		./$(SCRIPTS_DIR)/run_comprehensive_benchmark.sh; \
+		python3 -c "\
+import pandas as pd; \
+baseline = pd.read_csv('$(RESULTS_DIR)/baseline_results.csv'); \
+current = pd.read_csv('$(RESULTS_DIR)/benchmark_results_*.csv' | head -1); \
+print('Regression analysis would go here')"; \
+	else \
+		echo "No baseline found, creating baseline..."; \
+		./$(SCRIPTS_DIR)/run_comprehensive_benchmark.sh; \
+		cp $(RESULTS_DIR)/benchmark_results_*.csv $(RESULTS_DIR)/baseline_results.csv 2>/dev/null || true; \
+		echo "Baseline created"; \
+	fi
+
+# Help target
+.PHONY: help-benchmark
+help-benchmark:
+	@echo "OBDD Benchmark Targets:"
+	@echo "  benchmark-safe          - Run only working/reliable tests (RECOMMENDED)"
+	@echo "  benchmark-full          - Run complete benchmark pipeline (may have issues)"
+	@echo "  benchmark-demo          - Generate demo report with sample data"
+	@echo "  run-comprehensive-benchmark - Run automated benchmark suite"
+	@echo "  run-detailed-benchmark  - Run detailed C++ benchmark collector"
+	@echo "  generate-report         - Generate visual analysis report"
+	@echo "  benchmark-small/medium/large - Run scale-specific benchmarks"
+	@echo "  benchmark-validation    - Cross-validate backend correctness"
+	@echo "  benchmark-memory        - Run memory profiling"
+	@echo "  benchmark-regression    - Performance regression testing"
+	@echo "  clean-benchmark         - Clean benchmark artifacts"
+	@echo ""
+	@echo "Output locations:"
+	@echo "  Raw data: $(RESULTS_DIR)/"
+	@echo "  Visualizations: $(RESULTS_DIR)/visualizations/"
+	@echo "  HTML Report: $(RESULTS_DIR)/visualizations/benchmark_summary_report.html"

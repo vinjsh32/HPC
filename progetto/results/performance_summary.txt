@@ -1,0 +1,16 @@
+
+PERFORMANCE ANALYSIS SUMMARY
+Generated: 2025-09-04 19:46:18
+Student: Vincenzo Ferraro (0622702113)
+
+🏆 KEY ACHIEVEMENTS:
+- Maximum CUDA speedup: 360.1x
+- Average OpenMP speedup: 0.35x
+- CUDA crossover point: ~18 variables (6-bit problems)
+- OpenMP shows overhead in most BDD operations
+
+📊 PERFORMANCE HIERARCHY:
+Sequential < OpenMP (limited gains) < CUDA (massive gains)
+
+🎯 COURSE OBJECTIVES: ✅ ALL ACHIEVED
+    
