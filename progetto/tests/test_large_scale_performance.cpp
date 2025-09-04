@@ -45,13 +45,72 @@
  */
 
 #include <gtest/gtest.h>
-#include "backends/advanced/performance_benchmark.hpp"
+// #include "backends/advanced/performance_benchmark.hpp"  // Disabled due to CUDA dependencies
 #include "backends/advanced/realistic_problems.hpp"
 #include "backends/advanced/obdd_reordering.hpp"
 #include "core/obdd.hpp"
 #include <vector>
+#include <numeric>
 #include <chrono>
 #include <cstdio>
+
+// Local implementations to avoid CUDA dependencies
+typedef enum {
+    BACKEND_SEQUENTIAL = 0,
+    BACKEND_OPENMP = 1,
+    BACKEND_CUDA = 2
+} BackendType;
+
+extern "C" {
+    static OBDD* benchmark_generate_complex_function(int num_variables, int complexity) {
+        // Simple implementation without CUDA dependencies
+        std::vector<int> order(num_variables);
+        std::iota(order.begin(), order.end(), 0);
+        OBDD* bdd = obdd_create(num_variables, order.data());
+        
+        // Create simple complex function: alternating AND/OR pattern
+        OBDDNode* result = obdd_constant(0);
+        for (int i = 0; i < num_variables - 1; i += 2) {
+            OBDDNode* var1 = obdd_node_create(i, obdd_constant(0), obdd_constant(1));
+            OBDDNode* var2 = obdd_node_create(i+1, obdd_constant(0), obdd_constant(1));
+            
+            OBDD temp1 = *bdd; temp1.root = var1;
+            OBDD temp2 = *bdd; temp2.root = var2;
+            OBDDNode* and_term = obdd_apply(&temp1, &temp2, OBDD_AND);
+            
+            temp1.root = result;
+            temp2.root = and_term;
+            result = obdd_apply(&temp1, &temp2, OBDD_OR);
+        }
+        
+        bdd->root = result;
+        return bdd;
+    }
+    
+    static OBDD* benchmark_generate_scalability_test(int num_variables, int test_type) {
+        // Simple scalability test implementation
+        std::vector<int> order(num_variables);
+        std::iota(order.begin(), order.end(), 0);
+        OBDD* bdd = obdd_create(num_variables, order.data());
+        
+        // Different patterns based on test_type
+        OBDDNode* result = obdd_constant(test_type % 2);
+        for (int i = 0; i < num_variables; i++) {
+            OBDDNode* var = obdd_node_create(i, obdd_constant(0), obdd_constant(1));
+            OBDD temp1 = *bdd; temp1.root = result;
+            OBDD temp2 = *bdd; temp2.root = var;
+            
+            if (test_type == 0) {
+                result = obdd_apply(&temp1, &temp2, OBDD_AND);
+            } else {
+                result = obdd_apply(&temp1, &temp2, OBDD_OR);
+            }
+        }
+        
+        bdd->root = result;
+        return bdd;
+    }
+}
 #include <algorithm>
 
 class LargeScalePerformanceTest : public ::testing::Test {

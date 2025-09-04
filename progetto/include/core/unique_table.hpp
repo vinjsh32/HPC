@@ -1,15 +1,60 @@
+/*
+ * This file is part of the High-Performance OBDD Library
+ * Copyright (C) 2024 High Performance Computing Laboratory
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ * 
+ * Authors: Vincenzo Ferraro
+ * Student ID: 0622702113
+ * Email: v.ferraro5@studenti.unisa.it
+ * Assignment: Final Project - Parallel OBDD Implementation
+ * Course: High Performance Computing - Prof. Moscato
+ * University: Università degli studi di Salerno - Ingegneria Informatica magistrale
+ */
+
 /**
  * @file unique_table.hpp
- * @brief OBDD Library Implementation Component
+ * @brief Unique Table Interface for OBDD Canonical Node Management
  * 
- * This file is part of the high-performance OBDD library providing
- * comprehensive Binary Decision Diagram operations with multi-backend
- * support for Sequential CPU, OpenMP Parallel, and CUDA GPU execution.
+ * Corso di High Performance Computing - Prof. Moscato - Università degli studi di Salerno - Ingegneria Informatica magistrale
  * 
- * @author @vijsh32
- * @date August 7, 2024
- * @version 2.1
- * @copyright 2024 High Performance Computing Laboratory
+ * UNIQUE TABLE INTERFACE SPECIFICATION:
+ * ====================================
+ * This header defines the interface for the unique table data structure that
+ * ensures canonical ROBDD representation. The unique table guarantees that
+ * each distinct Boolean function has exactly one representation, enabling
+ * structural sharing and efficient equivalence testing.
+ * 
+ * MULTI-PLATFORM SUPPORT:
+ * =======================
+ * The interface is designed for both host (CPU) and device (GPU) compilation:
+ * - Host-only functions for current CPU implementations
+ * - Device-compatible hash functions for future CUDA integration
+ * - Conditional compilation macros for seamless multi-target builds
+ * 
+ * CANONICAL REPRESENTATION GUARANTEE:
+ * ===================================
+ * - Each unique (variable, low_child, high_child) triple maps to single node
+ * - Structural sharing maximizes memory efficiency through deduplication
+ * - Automatic elimination of isomorphic subtrees
+ * - O(1) equivalence testing through pointer comparison
+ * 
+ * @author vinjsh32
+ * @date September 2, 2024
+ * @version 3.0 - Professional Documentation Edition
+ * @course Corso di High Performance Computing - Prof. Moscato
+ * @university Università degli studi di Salerno - Ingegneria Informatica magistrale
  */
 
 

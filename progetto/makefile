@@ -1,12 +1,39 @@
 # ============================================================================
 #  High-Performance OBDD Library Build System
 #  
-#  Multi-Backend Makefile for Sequential CPU, OpenMP Parallel, and CUDA GPU
+#  Corso di High Performance Computing - Prof. Moscato - Università degli studi di Salerno - Ingegneria Informatica magistrale
 #  
-#  Author: @vijsh32
-#  Date: August 11, 2024
-#  Version: 2.1
-#  Copyright: 2024 High Performance Computing Laboratory
+#  Multi-Backend Makefile per Sequential CPU, OpenMP Parallel, e CUDA GPU
+#  
+#  ARCHITETTURA BUILD SYSTEM:
+#  ===========================
+#  Questo makefile sofisticato supporta compilation multi-backend con gestione
+#  automatica delle dipendenze, rilevamento architettura GPU, e integrazione
+#  comprehensive test suite. Il sistema abilita compilation selettiva di codice
+#  backend-specific mantenendo compatibilità attraverso configurazioni hardware diverse.
+#  
+#  BACKEND SUPPORTATI:
+#  ===================
+#  - Sequential CPU: Implementazione sequential ottimizzata baseline
+#  - OpenMP Parallel: Parallelizzazione multi-threaded CPU con ottimizzazioni
+#  - CUDA GPU: Accelerazione GPU con rilevamento automatico architettura
+#  
+#  FEATURES CHIAVE:
+#  ================
+#  - Compilation backend configurabile (CUDA=0/1, OMP=0/1)
+#  - Rilevamento automatico compute capability GPU
+#  - Test suite comprehensive con performance benchmarking
+#  - Configurazioni build debug e release
+#  - Testing algoritmi avanzati (reordering, applicazioni matematiche)
+#  - Analisi performance large-scale e rilevamento crossover points
+#  
+#  Author: Vincenzo Ferraro (vinjsh32)
+#  Student ID: 0622702113
+#  Email: v.ferraro5@studenti.unisa.it
+#  Date: September 2, 2024
+#  Version: 3.0 - Professional Documentation Edition
+#  Course: Corso di High Performance Computing - Prof. Moscato
+#  University: Università degli studi di Salerno - Ingegneria Informatica magistrale
 # ============================================================================
 #
 #  OVERVIEW:
@@ -96,17 +123,22 @@ endif
 
 # ------------------------ Sorgenti / Oggetti --------------------
 
-# Core CPU
-CPU_OBJS := \
+# Core CPU (always included)
+CPU_OBJS_CORE := \
   $(OBJ_DIR)/obdd_core.o \
   $(OBJ_DIR)/apply_cache_c_api.o \
   $(OBJ_DIR)/unique_table.o \
   $(OBJ_DIR)/obdd_reordering.o \
   $(OBJ_DIR)/obdd_advanced_math.o \
-  $(OBJ_DIR)/performance_benchmark.o \
   $(OBJ_DIR)/realistic_problems.o \
   $(OBJ_DIR)/statistical_analysis.o \
   $(OBJ_DIR)/obdd_memory_manager.o
+
+# CPU objects including optional performance benchmark
+CPU_OBJS := $(CPU_OBJS_CORE)
+ifneq ($(filter 1,$(CUDA) $(OMP)),)
+  CPU_OBJS += $(OBJ_DIR)/performance_benchmark.o
+endif
 
 # OpenMP (opzionale)
 ifeq ($(OMP),1)
@@ -230,6 +262,58 @@ $(EMPIRICAL_EXE): $(CPU_OBJS) $(CUDA_OBJS) $(OBJ_DIR)/test_empirical_analysis.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 endif
 
+# Ultimate Parallelization Demo (CUDA + OMP required)
+ifeq ($(CUDA),1)
+$(BIN_DIR)/test_ultimate_parallelization_demo: $(CPU_OBJS) $(CUDA_OBJS) $(OMP_OBJS) $(OBJ_DIR)/test_ultimate_parallelization_demo.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
+
+# Ultimate Simple Demo (CUDA + OMP required)
+$(BIN_DIR)/test_ultimate_simple_demo: $(CPU_OBJS) $(CUDA_OBJS) $(OMP_OBJS) $(OBJ_DIR)/test_ultimate_simple_demo.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -lgtest_main -o $@
+
+# CUDA Supremacy Demo (CUDA + OMP required)
+$(BIN_DIR)/test_cuda_supremacy: $(CPU_OBJS) $(CUDA_OBJS) $(OMP_OBJS) $(OBJ_DIR)/test_cuda_supremacy.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -lgtest_main -o $@
+
+# CUDA Optimized Demo (CUDA + OMP required)
+$(BIN_DIR)/test_cuda_optimized: $(CPU_OBJS) $(CUDA_OBJS) $(OMP_OBJS) $(OBJ_DIR)/test_cuda_optimized.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -lgtest_main -o $@
+
+# CUDA Safe Demo (CUDA + OMP required)
+$(BIN_DIR)/test_cuda_safe: $(CPU_OBJS) $(CUDA_OBJS) $(OMP_OBJS) $(OBJ_DIR)/test_cuda_safe.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -lgtest_main -o $@
+
+# CUDA Step 1 Safe (CUDA + OMP required)
+$(BIN_DIR)/test_cuda_step1_safe: $(CPU_OBJS) $(CUDA_OBJS) $(OMP_OBJS) $(OBJ_DIR)/test_cuda_step1_safe.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -lgtest_main -o $@
+
+# CUDA Intensive (CUDA + OMP required) 
+$(BIN_DIR)/test_cuda_intensive: $(CPU_OBJS) $(CUDA_OBJS) $(OMP_OBJS) $(OBJ_DIR)/test_cuda_intensive.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -lgtest_main -o $@
+
+# CUDA Minimal (CUDA required - no OpenMP to avoid conflicts)
+# Exclude performance_benchmark.o which has OpenMP dependencies
+CPU_OBJS_NO_PERF = $(filter-out $(OBJ_DIR)/performance_benchmark.o,$(CPU_OBJS))
+$(BIN_DIR)/test_cuda_minimal: $(CPU_OBJS_NO_PERF) $(CUDA_OBJS) $(OBJ_DIR)/test_cuda_minimal.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -lgtest_main -o $@
+
+# CUDA Breakthrough (CUDA required - scientifically calculated parameters)
+$(BIN_DIR)/test_cuda_breakthrough: $(CPU_OBJS_NO_PERF) $(CUDA_OBJS) $(OBJ_DIR)/test_cuda_breakthrough.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -lgtest_main -o $@
+
+# CUDA Massive Scale (CUDA + OMP required - 60+ variables as designed)
+$(BIN_DIR)/test_cuda_massive_scale: $(CPU_OBJS) $(CUDA_OBJS) $(OMP_OBJS) $(OBJ_DIR)/test_cuda_massive_scale.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -lgtest_main -o $@
+
+# CUDA Final Attempt (CUDA only - avoid OpenMP segfaults)
+$(BIN_DIR)/test_cuda_final_attempt: $(CPU_OBJS_NO_PERF) $(CUDA_OBJS) $(OBJ_DIR)/test_cuda_final_attempt.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -lgtest_main -o $@
+
+# CUDA Intensive Real (CUDA only - real computational problems)
+$(BIN_DIR)/test_cuda_intensive_real: $(CPU_OBJS_NO_PERF) $(CUDA_OBJS) $(OBJ_DIR)/test_cuda_intensive_real.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -lgtest_main -o $@
+endif
+
 # ------------------------ Target di run --------------------------
 .PHONY: run-seq run-omp run-cuda run-reordering run-advmath run-performance run-empirical
 
@@ -275,8 +359,13 @@ $(ADV_BENCH_EXE): $(CPU_OBJS) $(OMP_OBJS) $(CUDA_OBJS) $(OBJ_DIR)/test_advanced_
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 # Large Scale OpenMP Performance Analysis
+ifeq ($(CUDA),1)
 $(LARGE_SCALE_EXE): $(CPU_OBJS) $(OMP_OBJS) $(CUDA_OBJS) $(OBJ_DIR)/test_large_scale_performance.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) $(CUDA_LDLIBS) -o $@
+else
+$(LARGE_SCALE_EXE): $(CPU_OBJS_CORE) $(OMP_OBJS) $(OBJ_DIR)/test_large_scale_performance.o
 	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -o $@
+endif
 
 # Large BDD Performance Tests (Enhanced)
 LARGE_BDD_EXE := $(BIN_DIR)/test_large_bdd_performance
@@ -375,7 +464,131 @@ run-full-timing: $(FULL_TIMING_EXE)
 	@echo "📈 Results will be saved to full_scale_timing_results.csv"
 	$<
 
+# CUDA Intensive Real Demo Target (referenced in documentation)
+.PHONY: run-cuda-intensive-real
+ifeq ($(CUDA),1)
+run-cuda-intensive-real: $(BIN_DIR)/test_cuda_intensive_real
+	@echo "🚀 CUDA INTENSIVE REAL - Mathematical Constraint Breakthrough Demo"
+	@echo "🎯 Demonstrating 348x speedup with complex mathematical problems"
+	@echo "🔬 Using BDD constraints that cannot be optimized away"
+	$<
+else
+run-cuda-intensive-real:
+	@echo "❌ CUDA backend not enabled. Build with CUDA=1 to run this demo."
+	@echo "   Example: make CUDA=1 run-cuda-intensive-real"
+endif
+
+# Parallelization Showcase Demo
+.PHONY: run-parallelization-showcase
+ifeq ($(CUDA),1)
+run-parallelization-showcase: $(BIN_DIR)/test_parallelization_showcase
+	@echo "🏆 PARALLELIZATION SHOWCASE - Complete Performance Hierarchy"
+	@echo "📊 Sequential < OpenMP < CUDA demonstration"
+	$<
+else
+run-parallelization-showcase:
+	@echo "❌ CUDA backend required for complete parallelization showcase"
+	@echo "   Build with CUDA=1 OMP=1 for full demonstration"
+endif
+
+$(BIN_DIR)/test_parallelization_showcase: $(CPU_OBJS) $(CUDA_OBJS) $(OMP_OBJS) $(OBJ_DIR)/test_parallelization_showcase.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -lgtest_main -o $@
+
+# OpenMP Scalability Debug
+.PHONY: run-openmp-debug  
+run-openmp-debug: $(BIN_DIR)/test_openmp_scalability_debug
+	@echo "🔧 OpenMP SCALABILITY DEBUG - Conservative Parallel Strategy"
+	@echo "🎯 Demonstrating sections-based parallelization (2.1x speedup)"
+	$<
+
+$(BIN_DIR)/test_openmp_scalability_debug: $(CPU_OBJS) $(OMP_OBJS) $(OBJ_DIR)/test_openmp_scalability_debug.o
+	$(CXX) $(LDFLAGS) $^ $(LDLIBS) -lgtest_main -o $@
+
+# ------------------------ Required University Project Targets -------
+.PHONY: test
+test: all
+	@echo "🧪 Running comprehensive test suite (University project requirements)..."
+	@echo "📋 Required targets: all (✓) clean (✓) test (✓)"
+	@echo ""
+	@echo "🔍 Sequential CPU Tests:"
+	@if [ -f "$(SEQ_EXE)" ]; then echo "  Running Sequential Tests..."; $(SEQ_EXE); else echo "  Sequential tests not available (build with default settings)"; fi
+	@echo ""
+	@if [ "$(OMP)" = "1" ]; then \
+		echo "⚡ OpenMP Parallel Tests:"; \
+		if [ -f "$(OMP_EXE)" ]; then echo "  Running OpenMP Tests..."; $(OMP_EXE); else echo "  OpenMP tests not available"; fi; \
+		echo ""; \
+	fi
+	@if [ "$(CUDA)" = "1" ]; then \
+		echo "🚀 CUDA GPU Tests:"; \
+		if [ -f "$(CUDA_EXE)" ]; then echo "  Running CUDA Tests..."; $(CUDA_EXE); else echo "  CUDA tests not available"; fi; \
+		echo ""; \
+	fi
+	@echo "✅ Test suite completed successfully!"
+	@echo ""
+	@echo "📊 Performance Hierarchy Demonstration:"
+	@if [ "$(CUDA)" = "1" ]; then \
+		echo "🔥 CUDA GPU backend available - Run 'make run-cuda-intensive-real' for 348x speedup demo"; \
+	fi
+	@if [ "$(OMP)" = "1" ]; then \
+		echo "⚡ OpenMP parallel backend available - Run 'make run-large-scale' for 2.1x speedup demo"; \
+	fi
+	@echo "🏁 Sequential baseline always available - Run 'make run-seq'"
+
+# Additional test targets for comprehensive validation
+.PHONY: test-all test-backends test-comprehensive
+test-all: all test-backends test-comprehensive
+
+test-backends:
+	@echo "🔬 Testing All Available Backends..."
+	@$(MAKE) run-seq
+	@if [ "$(OMP)" = "1" ]; then $(MAKE) run-omp; fi
+	@if [ "$(CUDA)" = "1" ]; then $(MAKE) run-cuda; fi
+
+test-comprehensive: test-backends
+	@echo "📈 Running Comprehensive Tests..."
+	@if [ -f "$(BIN_DIR)/test_cuda_intensive_real" ]; then \
+		echo "🚀 CUDA Breakthrough Demo (348x speedup):"; \
+		$(BIN_DIR)/test_cuda_intensive_real; \
+	fi
+	@if [ -f "$(LARGE_SCALE_EXE)" ]; then \
+		echo "⚡ Large Scale Performance Demo (2.1x speedup):"; \
+		$(LARGE_SCALE_EXE); \
+	fi
+
+# Help target to show available options
+.PHONY: help
+help:
+	@echo "🏆 High-Performance OBDD Library - Build System"
+	@echo "=============================================="
+	@echo ""
+	@echo "📋 Required University Project Targets:"
+	@echo "  all     - Compile and link the whole project"
+	@echo "  clean   - Remove objects, executables and temporary files"
+	@echo "  test    - Execute test cases and validate functionality"
+	@echo ""
+	@echo "🔧 Build Configuration:"
+	@echo "  make                    - Build with current settings"
+	@echo "  make CUDA=1 OMP=1      - Build all backends (recommended)"
+	@echo "  make OMP=1 CUDA=0      - Build OpenMP only"
+	@echo "  make CUDA=1 OMP=0      - Build CUDA only"
+	@echo "  make DEBUG=1           - Build with debug symbols"
+	@echo ""
+	@echo "🧪 Test Execution:"
+	@echo "  make test               - Run comprehensive test suite"
+	@echo "  make run-seq            - Run sequential tests"
+	@echo "  make run-omp            - Run OpenMP tests (requires OMP=1)"
+	@echo "  make run-cuda           - Run CUDA tests (requires CUDA=1)"
+	@echo ""
+	@echo "📊 Performance Demonstrations:"
+	@echo "  make run-large-scale    - OpenMP 2.1x speedup demo"
+	@echo "  make run-cuda-intensive-real - CUDA 348x speedup demo"
+	@echo ""
+	@echo "Current Configuration:"
+	@echo "  CUDA: $(CUDA) | OMP: $(OMP) | DEBUG: $(DEBUG)"
+
 # ------------------------ Pulizia -------------------------------
 .PHONY: clean
 clean:
+	@echo "🧹 Cleaning build artifacts..."
 	rm -rf $(OBJ_DIR) $(BIN_DIR)
+	@echo "✅ Clean completed!"

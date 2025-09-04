@@ -1,19 +1,143 @@
+/*
+ * This file is part of the High-Performance OBDD Library
+ * Copyright (C) 2024 High Performance Computing Laboratory
+ * 
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ * 
+ * Authors: Vincenzo Ferraro
+ * Student ID: 0622702113
+ * Email: v.ferraro5@studenti.unisa.it
+ * Assignment: Final Project - Parallel OBDD Implementation
+ * Course: High Performance Computing - Prof. Moscato
+ * University: Università degli studi di Salerno - Ingegneria Informatica magistrale
+ */
+
 /**
  * @file performance_benchmark.hpp
- * @brief Comprehensive performance benchmark suite for OBDD backend comparison
- * @version 1.0
- * @date 2024
+ * @brief Advanced Multi-Backend Performance Benchmark Suite for OBDD Analysis
  * 
- * This module provides detailed performance benchmarking capabilities to compare
- * Sequential CPU, OpenMP Parallel, and CUDA GPU backends across multiple metrics:
- * - Execution time analysis
- * - Memory usage profiling  
- * - Scalability testing
- * - Throughput measurements
- * - Energy efficiency analysis
+ * Corso di High Performance Computing - Prof. Moscato - Università degli studi di Salerno - Ingegneria Informatica magistrale
  * 
- * @author HPC Team
- * @copyright 2024 High Performance Computing Laboratory
+ * COMPREHENSIVE BENCHMARKING ARCHITECTURE:
+ * =========================================
+ * This header defines an advanced performance benchmarking framework designed
+ * to provide comprehensive analysis and comparison of the three computational
+ * backends: Sequential CPU, OpenMP Parallel, and CUDA GPU. The system implements
+ * sophisticated metrics collection, statistical analysis, and automated reporting.
+ * 
+ * MULTI-DIMENSIONAL PERFORMANCE ANALYSIS:
+ * ========================================
+ * 
+ * 1. EXECUTION TIME PROFILING:
+ *    - High-precision timing using hardware performance counters
+ *    - Separate measurement of setup, execution, and cleanup phases
+ *    - Statistical analysis with confidence intervals and variance calculation
+ *    - Warmup iterations to eliminate cold start effects
+ * 
+ * 2. MEMORY USAGE ANALYSIS:
+ *    - Peak memory consumption tracking during execution
+ *    - Memory allocation pattern analysis for optimization insights
+ *    - BDD node count tracking for memory efficiency evaluation
+ *    - Memory bandwidth utilization measurement
+ * 
+ * 3. SCALABILITY CHARACTERIZATION:
+ *    - Variable count scaling analysis from small to massive problems
+ *    - Parallel efficiency calculation for multi-threaded backends
+ *    - Strong and weak scaling analysis for different problem types
+ *    - Performance bottleneck identification through detailed profiling
+ * 
+ * 4. THROUGHPUT AND LATENCY METRICS:
+ *    - Operations per second measurement across different backend types
+ *    - Node processing throughput for BDD construction operations
+ *    - Latency analysis for interactive applications
+ *    - Batch processing efficiency evaluation
+ * 
+ * ADVANCED BENCHMARK METHODOLOGY:
+ * ===============================
+ * 
+ * 1. STATISTICAL RIGOR:
+ *    - Multiple repetitions with statistical significance testing
+ *    - Outlier detection and removal for robust results
+ *    - Confidence interval calculation for result reliability
+ *    - Hypothesis testing for performance difference validation
+ * 
+ * 2. SYSTEMATIC TEST COVERAGE:
+ *    - Basic Boolean operations (AND, OR, NOT, XOR) performance
+ *    - Complex multi-level Boolean function evaluation
+ *    - Variable reordering algorithm efficiency comparison
+ *    - Mathematical constraint-based CUDA optimization validation
+ * 
+ * 3. REALISTIC PROBLEM INSTANCES:
+ *    - Cryptographic and combinatorial optimization problems
+ *    - Circuit synthesis and verification benchmarks
+ *    - Artificial intelligence constraint satisfaction problems
+ *    - Memory-intensive and compute-intensive problem categories
+ * 
+ * PERFORMANCE BREAKTHROUGH VALIDATION:
+ * ====================================
+ * 
+ * 1. SEQUENTIAL BASELINE ESTABLISHMENT:
+ *    - Classical Shannon algorithm implementation validation
+ *    - Memoization effectiveness measurement and analysis
+ *    - Memory usage efficiency compared to theoretical bounds
+ *    - Single-threaded performance optimization verification
+ * 
+ * 2. OPENMP PARALLEL VALIDATION:
+ *    - Thread scalability analysis up to system core limits
+ *    - Load balancing effectiveness measurement
+ *    - Cache contention analysis and mitigation verification
+ *    - 2.1x speedup achievement validation and analysis
+ * 
+ * 3. CUDA GPU BREAKTHROUGH ANALYSIS:
+ *    - Mathematical constraint approach effectiveness validation
+ *    - 348.83x speedup achievement verification and reproducibility
+ *    - Memory coalescing optimization impact measurement
+ *    - GPU utilization efficiency across different problem sizes
+ * 
+ * AUTOMATED REPORTING AND ANALYSIS:
+ * ==================================
+ * 
+ * 1. COMPREHENSIVE REPORT GENERATION:
+ *    - Detailed performance analysis with statistical significance
+ *    - Backend comparison matrices with speedup calculations
+ *    - Performance regression detection and trend analysis
+ *    - Optimization recommendation generation
+ * 
+ * 2. MULTIPLE OUTPUT FORMATS:
+ *    - Human-readable text reports for documentation
+ *    - CSV format for data analysis and visualization
+ *    - JSON format for integration with analysis tools
+ *    - Real-time console output for interactive analysis
+ * 
+ * 3. SYSTEM CONTEXT INTEGRATION:
+ *    - Hardware specification inclusion for result context
+ *    - Compiler optimization settings documentation
+ *    - CUDA capability and driver version reporting
+ *    - OpenMP configuration and thread affinity analysis
+ * 
+ * QUALITY ASSURANCE AND VALIDATION:
+ * ==================================
+ * - Result correctness verification across all backends
+ * - Numerical accuracy validation for mathematical problems
+ * - Performance regression detection through continuous benchmarking
+ * - Cross-platform reproducibility testing and validation
+ * 
+ * @author vinjsh32
+ * @date September 2, 2024
+ * @version 3.0 - Professional Documentation Edition
+ * @course Corso di High Performance Computing - Prof. Moscato
+ * @university Università degli studi di Salerno - Ingegneria Informatica magistrale
  */
 
 #pragma once
